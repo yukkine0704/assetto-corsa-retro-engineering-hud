@@ -7,7 +7,7 @@ return {
   centerY = 304,
 
   outerRadius = 286,
-  innerRadius = 268,
+  innerRadius = 260,
   dialRadius = 256,
   rpmRadius = 245,
   rpmSegments = 36,
@@ -20,7 +20,7 @@ return {
   coreFrameHalfWidth = 132,
   coreFrameHalfHeight = 149,
   coreFrameChamfer = 22,
-  coreHalfWidth = 108,
+  coreHalfWidth = 100,
   coreHalfHeight = 112,
   coreChamfer = 18,
   coreOffsetY = 4,

@@ -1,5 +1,7 @@
 local M = {}
 
+M.lastChange = 'Ready'
+
 M.values = ac.storage({
   layoutVersion = 1,
   hudScale = 0.72,
@@ -27,7 +29,23 @@ end
 local function checkbox(label, key)
   if ui.checkbox(label, M.values[key]) then
     M.values[key] = not M.values[key]
+    M.lastChange = label
   end
+end
+
+local function slider(label, key, minimum, maximum, format)
+  local value, changed = ui.slider(label, M.values[key], minimum, maximum, format, 1)
+  if changed then
+    M.values[key] = value
+    M.lastChange = label
+  end
+end
+
+local function resetVisualSettings()
+  M.values.hudScale = 0.72
+  M.values.backgroundOpacity = 0.72
+  M.values.opacity = 1.0
+  M.lastChange = 'Visual settings reset'
 end
 
 function M.draw()
@@ -35,22 +53,24 @@ function M.draw()
   ui.text('v0.2  /  central driving dial')
   ui.separator()
 
-  M.values.hudScale = ui.slider('HUD scale', M.values.hudScale, 0.55, 1.15, '%.2fx', 2)
-  M.values.backgroundOpacity = ui.slider('Backdrop opacity', M.values.backgroundOpacity, 0.18, 0.82, '%.0f%%', 2)
-  M.values.opacity = ui.slider('Instrument opacity', M.values.opacity, 0.55, 1.0, '%.0f%%', 2)
+  slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
+  slider('Backdrop opacity', 'backgroundOpacity', 0.18, 0.82, '%.0f%%')
+  slider('Instrument opacity', 'opacity', 0.55, 1.0, '%.0f%%')
+
+  if ui.button('Reset visual settings') then
+    resetVisualSettings()
+  end
 
   if ui.button('Speed unit: ' .. M.values.speedUnit) then
     M.values.speedUnit = M.values.speedUnit == 'km/h' and 'mph' or 'km/h'
+    M.lastChange = 'Speed unit'
   end
 
   ui.separator()
   ui.text('RPM behavior')
-  M.values.rpmWarningFraction = ui.slider(
-    'Warning threshold', M.values.rpmWarningFraction, 0.70, 0.98, '%.0f%%', 2)
-  M.values.rpmRedlineFraction = ui.slider(
-    'Redline threshold', M.values.rpmRedlineFraction, 0.82, 1.0, '%.0f%%', 2)
-  M.values.fallbackRpm = ui.slider(
-    'Fallback RPM', M.values.fallbackRpm, 4000, 16000, '%.0f rpm', 0)
+  slider('Warning threshold', 'rpmWarningFraction', 0.70, 0.98, '%.0f%%')
+  slider('Redline threshold', 'rpmRedlineFraction', 0.82, 1.0, '%.0f%%')
+  slider('Fallback RPM', 'fallbackRpm', 4000, 16000, '%.0f rpm')
 
   ui.separator()
   ui.text('Display')
@@ -61,6 +81,7 @@ function M.draw()
   checkbox('Developer debug view', 'debug')
 
   ui.separator()
+  ui.text('Last change: ' .. M.lastChange)
   ui.textWrapped('The dial is transparent outside its circular surface. Adjust its compact scale and frosted backdrop here; resize or move it through the normal AC app controls.')
 end
 

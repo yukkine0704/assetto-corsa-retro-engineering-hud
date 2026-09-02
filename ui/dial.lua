@@ -120,6 +120,18 @@ local function drawRpmArc(center, scale, state)
   end
 end
 
+local function drawSpeedBrackets(origin, scale)
+  local y = Layout.speedUnitY + 18
+  local leftStart = point(origin, scale, Layout.centerX - 108, y)
+  local leftEnd = point(origin, scale, Layout.centerX - 62, y)
+  local rightStart = point(origin, scale, Layout.centerX + 62, y)
+  local rightEnd = point(origin, scale, Layout.centerX + 108, y)
+  drawLine(leftStart, leftEnd, C.cyanDim, 2.2 * scale)
+  drawLine(rightStart, rightEnd, C.cyanDim, 2.2 * scale)
+  drawLine(leftEnd - vec2(8 * scale, 0), leftEnd, C.cyan, 1.3 * scale)
+  drawLine(rightStart, rightStart + vec2(8 * scale, 0), C.cyan, 1.3 * scale)
+end
+
 local function drawSteering(center, origin, scale, state)
   if not state.showSteering then return end
 
@@ -344,9 +356,10 @@ function M.draw(state, settings)
 
   ui.drawCircleFilled(center, Layout.outerRadius * scale, outerSurface, 96)
   ui.drawCircleFilled(center, Layout.innerRadius * scale, innerSurface, 96)
-  ui.drawCircle(center, Layout.outerRadius * scale, C.outlineSoft, 96, 3 * scale)
-  ui.drawCircle(center, (Layout.outerRadius - 7) * scale, C.outline, 96, 2 * scale)
-  ui.drawCircle(center, (Layout.outerRadius - 14) * scale, C.outlineDim, 96, 5 * scale)
+  ui.drawCircle(center, Layout.outerRadius * scale, C.metal, 96, 3 * scale)
+  ui.drawCircle(center, (Layout.outerRadius - 7) * scale, C.metalDim, 96, 3 * scale)
+  ui.drawCircle(center, (Layout.outerRadius - 15) * scale, C.outlineDim, 96, 5 * scale)
+  ui.drawCircle(center, (Layout.outerRadius - 22) * scale, C.metalDim, 96, 2 * scale)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
   drawRpmArc(center, scale, state)
@@ -375,6 +388,7 @@ function M.draw(state, settings)
 
   centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
   centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
+  drawSpeedBrackets(origin, scale)
   centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), state.rpmRedline and C.amber or C.primary)
   centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
   centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
