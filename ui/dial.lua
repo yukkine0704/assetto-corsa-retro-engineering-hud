@@ -184,7 +184,7 @@ local function drawAnalogDial(center, scale, state, settings, surface)
     dialCenter + vec2(0, (Layout.analogSpeedOffsetY + 20) * scale), C.secondary)
 end
 
-local function drawAnalogAuxiliary(origin, scale, state, settings, panel)
+local function drawAnalogAuxiliary(center, origin, scale, state, settings)
   local requestedMode = settings.analogAuxiliaryMode or 'auto'
   if requestedMode == 'off' then return end
 
@@ -204,43 +204,20 @@ local function drawAnalogAuxiliary(origin, scale, state, settings, panel)
     accent = normalized < 0.15 and C.red or C.primary
   end
 
-  local y = Layout.analogAuxY
-  local top = y * scale
-  local bottom = (y + Layout.analogAuxHeight) * scale
-  local cx = Layout.centerX * scale
-  local topHalf = Layout.analogAuxTopHalfWidth * scale
-  local bottomHalf = Layout.analogAuxBottomHalfWidth * scale
-  local chamfer = 7 * scale
-  local topLeft = origin + vec2(cx - topHalf, top)
-  local topRight = origin + vec2(cx + topHalf, top)
-  local bottomLeft = origin + vec2(cx - bottomHalf, bottom)
-  local bottomRight = origin + vec2(cx + bottomHalf, bottom)
+  local radius = Layout.analogAuxArcRadius * scale
+  local span = (Layout.analogAuxArcEnd - Layout.analogAuxArcStart) / Layout.analogAuxSegments
+  local filled = math.floor(normalized * Layout.analogAuxSegments + 0.5)
+  drawArc(center, radius, Layout.analogAuxArcStart, Layout.analogAuxArcEnd,
+    C.outlineDim, (Layout.analogAuxArcWidth + 4) * scale, 32)
+  for i = 1, Layout.analogAuxSegments do
+    local startAngle = Layout.analogAuxArcStart + (i - 1) * span + 0.012
+    local endAngle = Layout.analogAuxArcStart + i * span - 0.012
+    drawArc(center, radius, startAngle, endAngle,
+      i <= filled and accent or C.inactive, Layout.analogAuxArcWidth * scale, 5)
+  end
 
-  ui.pathClear()
-  ui.pathLineTo(topLeft + vec2(chamfer, 0))
-  ui.pathLineTo(topRight - vec2(chamfer, 0))
-  ui.pathLineTo(topRight)
-  ui.pathLineTo(bottomRight)
-  ui.pathLineTo(bottomLeft)
-  ui.pathLineTo(topLeft)
-  ui.pathFillConvex(panel)
-
-  ui.pathClear()
-  ui.pathLineTo(topLeft + vec2(chamfer, 0))
-  ui.pathLineTo(topRight - vec2(chamfer, 0))
-  ui.pathLineTo(topRight)
-  ui.pathLineTo(bottomRight)
-  ui.pathLineTo(bottomLeft)
-  ui.pathLineTo(topLeft)
-  ui.pathStroke(C.outlineSoft, true, 1.4 * scale)
-
-  centeredText(label, 11 * scale, point(origin, scale, Layout.centerX - 70, y + 10), C.secondary)
-  centeredText(value, 13 * scale, point(origin, scale, Layout.centerX + 50, y + 10), accent)
-  local barWidth = Layout.analogAuxBarWidth * scale
-  local barHeight = Layout.analogAuxBarHeight * scale
-  local barTopLeft = point(origin, scale, Layout.centerX - Layout.analogAuxBarWidth / 2, y + 21)
-  ui.drawRectFilled(barTopLeft, barTopLeft + vec2(barWidth, barHeight), C.inactive)
-  ui.drawRectFilled(barTopLeft, barTopLeft + vec2(barWidth * normalized, barHeight), accent)
+  centeredText(label, 11 * scale, point(origin, scale, Layout.centerX - 66, Layout.analogAuxLabelY), C.secondary)
+  centeredText(value, 13 * scale, point(origin, scale, Layout.centerX + 52, Layout.analogAuxLabelY), accent)
 end
 
 local function drawSpeedBrackets(origin, scale)
@@ -495,8 +472,7 @@ function M.draw(state, settings)
 
   if analogMode then
     drawAnalogDial(center, scale, state, settings, coreSurface)
-    drawAnalogAuxiliary(origin, scale, state, settings,
-      Theme.withAlpha(C.panelRaised, backdropOpacity * 0.78))
+    drawAnalogAuxiliary(center, origin, scale, state, settings)
   else
     drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
       Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
