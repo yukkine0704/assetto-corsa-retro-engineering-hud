@@ -16,6 +16,7 @@ M.values = ac.storage({
   showTcAbsLevels = true,
   showSteering = true,
   animateIndicators = true,
+  animateShiftAlert = true,
   debug = false
 })
 
@@ -80,6 +81,7 @@ function M.draw()
   checkbox('Show lights', 'showLights')
   checkbox('Show TC / ABS levels', 'showTcAbsLevels')
   checkbox('Blink turn indicators', 'animateIndicators')
+  checkbox('Blink shift zone', 'animateShiftAlert')
   checkbox('Developer debug view', 'debug')
 
   ui.separator()

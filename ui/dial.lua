@@ -98,28 +98,34 @@ local function indicatorLit(state, animationEnabled)
   return math.floor(state.clock / Layout.indicatorBlinkPeriod) % 2 == 0
 end
 
-local function drawRpmArc(center, scale, state)
+local function drawRpmArc(center, scale, state, settings)
   local segmentCount = Layout.rpmSegments
   local span = (Layout.rpmEnd - Layout.rpmStart) / segmentCount
   local filled = math.floor(state.rpmNormalized * segmentCount + 0.5)
 
-  drawArc(center, Layout.rpmRadius * scale, Layout.rpmStart, Layout.rpmEnd, C.outlineDim, 15 * scale, 72)
+  local shiftLit = state.rpmWarning
+    and (settings == nil or settings.animateShiftAlert ~= false)
+    and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
+
+  drawArc(center, Layout.rpmRadius * scale, Layout.rpmStart, Layout.rpmEnd,
+    C.outlineDim, Layout.rpmTrackWidth * scale, 72)
 
   for i = 1, segmentCount do
     local a1 = Layout.rpmStart + (i - 1) * span + 0.012
     local a2 = Layout.rpmStart + i * span - 0.012
     local fraction = i / segmentCount
-    local color = C.inactive
-    if i <= filled then
+    local inShiftZone = fraction >= state.rpmWarningFraction and fraction < state.rpmRedlineFraction
+    local color = inShiftZone and C.shiftBlueDim or C.inactive
+    if inShiftZone and state.rpmWarning and shiftLit then
+      color = C.shiftBlue
+    elseif i <= filled then
       if fraction >= state.rpmRedlineFraction then
         color = C.red
-      elseif fraction >= state.rpmWarningFraction then
-        color = C.amber
       else
         color = C.primary
       end
     end
-    drawArc(center, Layout.rpmRadius * scale, a1, a2, color, 10 * scale, 5)
+    drawArc(center, Layout.rpmRadius * scale, a1, a2, color, Layout.rpmSegmentWidth * scale, 5)
   end
 
   -- Major RPM index marks are intentionally sparse: peripheral readability
@@ -201,7 +207,9 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   ui.pathLineTo(origin + vec2(housingLeft, housingTop + chamfer))
   ui.pathStroke(C.outlineSoft, true, 1.4 * scale)
 
-  centeredText(label, 12 * scale, point(origin, scale, x + width / 2, y - 16), labelColor)
+  if label then
+    centeredText(label, 12 * scale, point(origin, scale, x + width / 2, y - 16), labelColor)
+  end
   for i = 1, segmentCount do
     local segmentY = y * scale + (segmentCount - i) * (segmentHeight + gap)
     local topLeft = origin + vec2(x * scale, segmentY)
@@ -377,7 +385,7 @@ function M.draw(state, settings)
   ui.drawCircle(center, (Layout.outerRadius - 22) * scale, C.metalDim, 96, 2 * scale)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
-  drawRpmArc(center, scale, state)
+  drawRpmArc(center, scale, state, settings)
 
   local leftArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-140))
   local rightArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-40))
@@ -397,9 +405,9 @@ function M.draw(state, settings)
     steeringAngle = state.steeringAngle
   })
 
-  drawPedalBar(origin, scale, Layout.brakeX, 'BRAKE', state.brake, C.red, C.primary,
+  drawPedalBar(origin, scale, Layout.brakeX, nil, state.brake, C.red, C.primary,
     inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
-  drawPedalBar(origin, scale, Layout.throttleX, 'THROTTLE', state.throttle, C.cyan, C.primary,
+  drawPedalBar(origin, scale, Layout.throttleX, nil, state.throttle, C.cyan, C.primary,
     inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
 
   centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
