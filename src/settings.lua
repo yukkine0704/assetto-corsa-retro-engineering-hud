@@ -19,6 +19,7 @@ M.values = ac.storage({
   showSteering = true,
   animateIndicators = true,
   animateShiftAlert = true,
+  animateRedlineAlert = true,
   debug = false
 })
 
@@ -66,7 +67,7 @@ end
 
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.6  /  digital + analog driving dial')
+  ui.text('v0.7  /  digital + analog driving dial')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
@@ -106,6 +107,7 @@ function M.draw()
   checkbox('Show TC / ABS levels', 'showTcAbsLevels')
   checkbox('Blink turn indicators', 'animateIndicators')
   checkbox('Blink shift zone', 'animateShiftAlert')
+  checkbox('Blink redline alert', 'animateRedlineAlert')
   checkbox('Developer debug view', 'debug')
 
   ui.separator()

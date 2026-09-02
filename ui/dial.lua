@@ -52,12 +52,12 @@ local function drawOctagon(center, halfWidth, halfHeight, chamfer, fill, stroke,
   ui.pathStroke(stroke, true, strokeWidth)
 end
 
-local function drawBezelArcCut(center, radius, angle, span, scale, active, backdrop)
+local function drawBezelArcCut(center, radius, angle, span, scale, active, backdrop, activeFill, activeStroke)
   local halfWidth = Layout.bezelCutWidth * scale / 2
   local startAngle = angle - span / 2
   local endAngle = angle + span / 2
-  local fill = active and C.amberDim or backdrop
-  local stroke = active and C.amber or C.outlineDim
+  local fill = active and (activeFill or C.amberDim) or backdrop
+  local stroke = active and (activeStroke or C.amber) or C.outlineDim
 
   drawArc(center, radius, startAngle, endAngle, fill, Layout.bezelCutWidth * scale, 10)
   drawArc(center, radius - halfWidth, startAngle, endAngle, C.outlineDim, 1.2 * scale, 10)
@@ -77,6 +77,24 @@ local function indicatorLit(state, animationEnabled)
   end
 
   return math.floor(state.clock / Layout.indicatorBlinkPeriod) % 2 == 0
+end
+
+local function redlinePulseOn(state, settings)
+  if not state.rpmRedline then return false end
+  if settings == nil or settings.animateRedlineAlert ~= false then
+    return math.floor(state.clock / Layout.redlineBlinkPeriod) % 2 == 0
+  end
+  return true
+end
+
+local function redlineColor(state, settings)
+  return redlinePulseOn(state, settings) and C.red or C.amber
+end
+
+local function drawRedlinePulse(center, radius, scale, state, settings)
+  if not state.rpmRedline then return end
+  drawArc(center, radius, Layout.rpmStart, Layout.rpmEnd,
+    redlineColor(state, settings), 3 * scale, 72)
 end
 
 local function drawRpmArc(center, scale, state, settings)
@@ -103,7 +121,7 @@ local function drawRpmArc(center, scale, state, settings)
       if state.rpmWarning and shiftLit then color = C.shiftBlue end
     elseif i <= filled then
       if fraction >= state.rpmRedlineFraction then
-        color = C.red
+        color = state.rpmRedline and redlineColor(state, settings) or C.red
       else
         color = C.primary
       end
@@ -117,9 +135,11 @@ local function drawRpmArc(center, scale, state, settings)
     local angle = Layout.rpmStart + (Layout.rpmEnd - Layout.rpmStart) * i / 9
     local tickInner = U.polar(center, Layout.rpmRadius * scale - 18 * scale, angle)
     local tickOuter = U.polar(center, Layout.rpmRadius * scale - 8 * scale, angle)
-    drawLine(tickInner, tickOuter, i >= 8 and C.red or C.outline, 2 * scale)
+    drawLine(tickInner, tickOuter,
+      i >= 8 and (state.rpmRedline and redlineColor(state, settings) or C.red) or C.outline, 2 * scale)
     local labelPosition = U.polar(center, Layout.rpmRadius * scale - 38 * scale, angle)
-    centeredText(tostring(i), 22 * scale, labelPosition, i >= 8 and C.primary or C.secondary)
+    centeredText(tostring(i), 22 * scale, labelPosition,
+      i >= 8 and (state.rpmRedline and redlineColor(state, settings) or C.primary) or C.secondary)
   end
 end
 
@@ -146,7 +166,7 @@ local function drawAnalogDial(center, scale, state, settings, surface)
     local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
     local color = C.secondary
     if fraction >= state.rpmRedlineFraction then
-      color = C.red
+      color = state.rpmRedline and redlineColor(state, settings) or C.red
     elseif inShiftZone then
       color = state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
     elseif major then
@@ -162,22 +182,23 @@ local function drawAnalogDial(center, scale, state, settings, surface)
     local angle = Layout.rpmStart + span * i / 9
     local labelPosition = U.polar(dialCenter, tickRadius - 31 * scale, angle)
     local fraction = i / 9
-    local color = fraction >= state.rpmRedlineFraction and C.red
+    local color = fraction >= state.rpmRedlineFraction and (state.rpmRedline and redlineColor(state, settings) or C.red)
       or (fraction >= shiftZoneStart and C.shiftBlueDim or C.primary)
     centeredText(tostring(i), 22 * scale, labelPosition, color)
   end
 
   local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
   local needleTip = U.polar(dialCenter, Layout.analogNeedleLength * scale, needleAngle)
-  local needleColor = state.rpmRedline and C.red or C.primary
+  local needleColor = state.rpmRedline and redlineColor(state, settings) or C.primary
   drawLine(dialCenter, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 4) * scale)
   drawLine(dialCenter, needleTip, needleColor, Layout.analogNeedleWidth * scale)
   ui.drawCircleFilled(dialCenter, 12 * scale, C.panelRaised, 24)
   ui.drawCircle(dialCenter, 12 * scale, C.outline, 24, 1.8 * scale)
-  ui.drawCircleFilled(dialCenter, 4 * scale, state.rpmWarning and C.amber or C.primary, 16)
+  ui.drawCircleFilled(dialCenter, 4 * scale,
+    state.rpmRedline and redlineColor(state, settings) or (state.rpmWarning and C.amber or C.primary), 16)
 
   centeredText(state.gearText, Layout.analogGearFontSize * scale,
-    dialCenter + vec2(0, 34 * scale), state.rpmRedline and C.amber or C.primary)
+    dialCenter + vec2(0, 34 * scale), state.rpmRedline and redlineColor(state, settings) or C.primary)
   centeredText(state.speedText, Layout.analogSpeedFontSize * scale,
     dialCenter + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
   centeredText(state.speedUnit, 12 * scale,
@@ -391,10 +412,12 @@ local function drawCell(origin, scale, x, label, value, active, valueColor, draw
   end
 end
 
-local function drawWarningBezelCut(center, scale, state, backdrop)
+local function drawWarningBezelCut(center, scale, state, settings, backdrop)
   local active = state.rpmRedline or state.handbrake > 0.9
+  local warningFill = state.rpmRedline and (redlinePulseOn(state, settings) and C.redDim or C.amberDim) or C.amberDim
+  local warningStroke = state.rpmRedline and redlineColor(state, settings) or C.amber
   drawBezelArcCut(center, Layout.bezelCutRadius * scale, math.pi / 2,
-    Layout.warningArcSpan, scale, active, backdrop)
+    Layout.warningArcSpan, scale, active, backdrop, warningFill, warningStroke)
 end
 
 local function drawScrews(center, scale)
@@ -458,7 +481,10 @@ function M.draw(state, settings)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
   local analogMode = settings.instrumentMode == 'analog'
-  if not analogMode then drawRpmArc(center, scale, state, settings) end
+  if not analogMode then
+    drawRpmArc(center, scale, state, settings)
+    drawRedlinePulse(center, Layout.rpmRadius * scale, scale, state, settings)
+  end
 
   local leftCutAngle = math.pi + Layout.turnIndicatorAngle
   local rightCutAngle = -Layout.turnIndicatorAngle
@@ -472,6 +498,8 @@ function M.draw(state, settings)
 
   if analogMode then
     drawAnalogDial(center, scale, state, settings, coreSurface)
+    local analogCenter = center + vec2(0, Layout.analogDialOffsetY * scale)
+    drawRedlinePulse(analogCenter, (Layout.analogDialRadius - 8) * scale, scale, state, settings)
     drawAnalogAuxiliary(center, origin, scale, state, settings)
   else
     drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
@@ -492,8 +520,10 @@ function M.draw(state, settings)
     centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
     centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
     drawSpeedBrackets(origin, scale)
-    centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), state.rpmRedline and C.amber or C.primary)
-    centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
+    local digitalAlertColor = state.rpmRedline and redlineColor(state, settings) or C.primary
+    centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), digitalAlertColor)
+    centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY),
+      state.rpmRedline and digitalAlertColor or (state.rpmWarning and C.amber or C.primary))
     centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
 
     drawElectronicsShelf(origin, scale, Theme.withAlpha(C.panelRaised, backdropOpacity * 0.72))
@@ -520,7 +550,7 @@ function M.draw(state, settings)
       state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
   end
 
-  drawWarningBezelCut(center, scale, state, outerSurface)
+  drawWarningBezelCut(center, scale, state, settings, outerSurface)
   drawScrews(center, scale)
 
   if settings.debug then drawDebug(origin, scale, state) end

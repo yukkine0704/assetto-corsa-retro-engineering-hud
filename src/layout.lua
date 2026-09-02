@@ -24,6 +24,7 @@ return {
   warningArcSpan = math.rad(12),
   indicatorBlinkPeriod = 0.42,
   shiftBlinkPeriod = 0.18,
+  redlineBlinkPeriod = 0.12,
   shiftZoneMinimumFraction = 0.14,
 
   analogDialOffsetY = 0,
