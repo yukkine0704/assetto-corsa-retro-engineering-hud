@@ -123,6 +123,66 @@ local function drawRpmArc(center, scale, state, settings)
   end
 end
 
+local function drawAnalogDial(center, scale, state, settings, surface)
+  local dialRadius = Layout.analogDialRadius * scale
+  local tickRadius = Layout.analogTickRadius * scale
+  local tickCount = Layout.analogMinorTickCount
+  local span = Layout.rpmEnd - Layout.rpmStart
+  local shiftLit = state.rpmWarning
+    and (settings == nil or settings.animateShiftAlert ~= false)
+    and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
+  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
+    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
+
+  ui.drawCircleFilled(center, dialRadius, surface, 96)
+  ui.drawCircle(center, dialRadius, C.outlineSoft, 96, 1.7 * scale)
+  drawArc(center, tickRadius, Layout.rpmStart, Layout.rpmEnd, C.outlineDim, 2 * scale, 72)
+
+  for i = 0, tickCount do
+    local fraction = i / tickCount
+    local angle = Layout.rpmStart + span * fraction
+    local major = i % 5 == 0
+    local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
+    local color = C.secondary
+    if fraction >= state.rpmRedlineFraction then
+      color = C.red
+    elseif inShiftZone then
+      color = state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
+    elseif major then
+      color = C.primary
+    end
+    local length = (major and 15 or 7) * scale
+    local outer = U.polar(center, tickRadius, angle)
+    local inner = U.polar(center, tickRadius - length, angle)
+    drawLine(inner, outer, color, (major and 2.6 or 1.4) * scale)
+  end
+
+  for i = 0, 9 do
+    local angle = Layout.rpmStart + span * i / 9
+    local labelPosition = U.polar(center, tickRadius - 31 * scale, angle)
+    local fraction = i / 9
+    local color = fraction >= state.rpmRedlineFraction and C.red
+      or (fraction >= shiftZoneStart and C.shiftBlueDim or C.primary)
+    centeredText(tostring(i), 22 * scale, labelPosition, color)
+  end
+
+  local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
+  local needleTip = U.polar(center, Layout.analogNeedleLength * scale, needleAngle)
+  local needleColor = state.rpmRedline and C.red or C.primary
+  drawLine(center, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 4) * scale)
+  drawLine(center, needleTip, needleColor, Layout.analogNeedleWidth * scale)
+  ui.drawCircleFilled(center, 12 * scale, C.panelRaised, 24)
+  ui.drawCircle(center, 12 * scale, C.outline, 24, 1.8 * scale)
+  ui.drawCircleFilled(center, 4 * scale, state.rpmWarning and C.amber or C.primary, 16)
+
+  centeredText(state.gearText, Layout.analogGearFontSize * scale,
+    center + vec2(0, 34 * scale), state.rpmRedline and C.amber or C.primary)
+  centeredText(state.speedText, Layout.analogSpeedFontSize * scale,
+    center + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
+  centeredText(state.speedUnit, 12 * scale,
+    center + vec2(0, (Layout.analogSpeedOffsetY + 20) * scale), C.secondary)
+end
+
 local function drawSpeedBrackets(origin, scale)
   local y = Layout.speedUnitY + 18
   local leftStart = point(origin, scale, Layout.centerX - 108, y)
@@ -360,7 +420,8 @@ function M.draw(state, settings)
   ui.drawCircle(center, (Layout.outerRadius - 22) * scale, C.metalDim, 96, 2 * scale)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
-  drawRpmArc(center, scale, state, settings)
+  local analogMode = settings.instrumentMode == 'analog'
+  if not analogMode then drawRpmArc(center, scale, state, settings) end
 
   local leftCutAngle = math.pi + Layout.turnIndicatorAngle
   local rightCutAngle = -Layout.turnIndicatorAngle
@@ -372,50 +433,54 @@ function M.draw(state, settings)
   drawBezelArcCut(center, Layout.bezelCutRadius * scale, rightCutAngle,
     Layout.turnIndicatorArcSpan, scale, rightActive == true, outerSurface)
 
-  drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
-    Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
-  drawOctagon(center + vec2(0, Layout.coreOffsetY * scale), Layout.coreHalfWidth * scale,
-    Layout.coreHalfHeight * scale, Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
-  drawSteering(center, origin, scale, {
-    showSteering = settings.showSteering,
-    steeringInput = state.steeringInput,
-    steeringAngle = state.steeringAngle
-  })
+  if analogMode then
+    drawAnalogDial(center, scale, state, settings, coreSurface)
+  else
+    drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
+      Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
+    drawOctagon(center + vec2(0, Layout.coreOffsetY * scale), Layout.coreHalfWidth * scale,
+      Layout.coreHalfHeight * scale, Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
+    drawSteering(center, origin, scale, {
+      showSteering = settings.showSteering,
+      steeringInput = state.steeringInput,
+      steeringAngle = state.steeringAngle
+    })
 
-  drawPedalBar(origin, scale, Layout.brakeX, nil, state.brake, C.red, C.primary,
-    inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
-  drawPedalBar(origin, scale, Layout.throttleX, nil, state.throttle, C.cyan, C.primary,
-    inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
+    drawPedalBar(origin, scale, Layout.brakeX, nil, state.brake, C.red, C.primary,
+      inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
+    drawPedalBar(origin, scale, Layout.throttleX, nil, state.throttle, C.cyan, C.primary,
+      inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
 
-  centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
-  centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
-  drawSpeedBrackets(origin, scale)
-  centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), state.rpmRedline and C.amber or C.primary)
-  centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
-  centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
+    centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
+    centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
+    drawSpeedBrackets(origin, scale)
+    centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), state.rpmRedline and C.amber or C.primary)
+    centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
+    centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
 
-  drawElectronicsShelf(origin, scale, Theme.withAlpha(C.panelRaised, backdropOpacity * 0.72))
+    drawElectronicsShelf(origin, scale, Theme.withAlpha(C.panelRaised, backdropOpacity * 0.72))
 
-  if settings.showClutch then drawClutch(origin, scale, state) end
+    if settings.showClutch then drawClutch(origin, scale, state) end
 
-  local cellX = Layout.electronicsX
-  local tcValue = state.tcLevel and (settings.showTcAbsLevels and tostring(state.tcLevel) or 'ON') or '—'
-  local absValue = state.absLevel and (settings.showTcAbsLevels and tostring(state.absLevel) or 'ON') or '—'
-  drawCell(origin, scale, cellX, 'TC', tcValue, state.tcActive == true, state.tcActive and C.amber or C.primary,
-    nil, coreSurface, raisedSurface)
-  cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
-  drawCell(origin, scale, cellX, 'ABS', absValue, state.absActive == true, state.absActive and C.amber or C.primary,
-    nil, coreSurface, raisedSurface)
-  cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
-  local lightsShown = settings.showLights and state.lightsAvailable
-  drawCell(origin, scale, cellX, 'LIGHTS', lightsShown and 'ON' or '—', lightsShown and state.headlights == true,
-    state.highBeams and C.amber or C.cyan, lightsShown and function(centerPosition, iconScale)
-      drawHeadlightIcon(centerPosition, iconScale, state)
-    end or nil, coreSurface, raisedSurface)
-  cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
-  local pitValue = state.pitLimiter ~= nil and (state.pitLimiter and 'ON' or '—') or (state.pitLane and 'P' or '—')
-  drawCell(origin, scale, cellX, 'PIT', pitValue, state.pitLimiter == true or state.pitLane,
-    state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
+    local cellX = Layout.electronicsX
+    local tcValue = state.tcLevel and (settings.showTcAbsLevels and tostring(state.tcLevel) or 'ON') or '—'
+    local absValue = state.absLevel and (settings.showTcAbsLevels and tostring(state.tcLevel) or 'ON') or '—'
+    drawCell(origin, scale, cellX, 'TC', tcValue, state.tcActive == true, state.tcActive and C.amber or C.primary,
+      nil, coreSurface, raisedSurface)
+    cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
+    drawCell(origin, scale, cellX, 'ABS', absValue, state.absActive == true, state.absActive and C.amber or C.primary,
+      nil, coreSurface, raisedSurface)
+    cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
+    local lightsShown = settings.showLights and state.lightsAvailable
+    drawCell(origin, scale, cellX, 'LIGHTS', lightsShown and 'ON' or '—', lightsShown and state.headlights == true,
+      state.highBeams and C.amber or C.cyan, lightsShown and function(centerPosition, iconScale)
+        drawHeadlightIcon(centerPosition, iconScale, state)
+      end or nil, coreSurface, raisedSurface)
+    cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
+    local pitValue = state.pitLimiter ~= nil and (state.pitLimiter and 'ON' or '—') or (state.pitLane and 'P' or '—')
+    drawCell(origin, scale, cellX, 'PIT', pitValue, state.pitLimiter == true or state.pitLane,
+      state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
+  end
 
   drawWarningBezelCut(center, scale, state, outerSurface)
   drawScrews(center, scale)

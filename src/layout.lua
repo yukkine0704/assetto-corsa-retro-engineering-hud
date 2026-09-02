@@ -26,6 +26,18 @@ return {
   shiftBlinkPeriod = 0.18,
   shiftZoneMinimumFraction = 0.14,
 
+  analogDialRadius = 194,
+  analogTickRadius = 170,
+  analogMinorTickCount = 45,
+  analogNeedleLength = 144,
+  analogNeedleWidth = 5,
+  analogNeedleSpring = 250,
+  analogNeedleDamping = 28,
+  analogNeedleMaxVelocity = 5.8,
+  analogGearFontSize = 82,
+  analogSpeedOffsetY = 77,
+  analogSpeedFontSize = 31,
+
   coreFrameHalfWidth = 112,
   coreFrameHalfHeight = 142,
   coreFrameChamfer = 22,

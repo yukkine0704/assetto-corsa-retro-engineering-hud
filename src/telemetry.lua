@@ -1,4 +1,5 @@
 local U = require('src/utils')
+local Layout = require('src/layout')
 
 local M = {}
 local SIM = ac.getSim()
@@ -17,6 +18,8 @@ local function blankState()
     rpmDisplayLimiter = 8000,
     rpmSource = 'fallback',
     rpmNormalized = 0,
+    analogNeedleNormalized = 0,
+    analogNeedleVelocity = 0,
     rpmWarningFraction = 0.86,
     rpmRedlineFraction = 0.96,
     rpmWarning = false,
@@ -81,6 +84,21 @@ local function formattedGear(state, value)
   end
 end
 
+local function updateAnalogNeedle(state, dt)
+  local step = U.clamp(dt or 0, 0, 0.05)
+  if step <= 0 then return end
+
+  local acceleration = (state.rpmNormalized - state.analogNeedleNormalized) * Layout.analogNeedleSpring
+    - state.analogNeedleVelocity * Layout.analogNeedleDamping
+  local velocity = U.clamp(state.analogNeedleVelocity + acceleration * step,
+    -Layout.analogNeedleMaxVelocity, Layout.analogNeedleMaxVelocity)
+  local position = U.clamp(state.analogNeedleNormalized + velocity * step, 0, 1)
+
+  if position == 0 or position == 1 then velocity = 0 end
+  state.analogNeedleNormalized = position
+  state.analogNeedleVelocity = velocity
+end
+
 function M.update(state, dt, settings)
   state.clock = state.clock + math.max(dt or 0, 0)
 
@@ -113,6 +131,7 @@ function M.update(state, dt, settings)
   state.rpmRedlineFraction = settings.rpmRedlineFraction
   state.rpmWarning = state.rpmNormalized >= settings.rpmWarningFraction
   state.rpmRedline = state.rpmNormalized >= settings.rpmRedlineFraction
+  updateAnalogNeedle(state, dt)
   formattedRpm(state, U.round(state.rpm))
 
   state.gear = U.number(U.read(car, 'gear', 0), 0)

@@ -8,6 +8,7 @@ M.values = ac.storage({
   opacity = 1.0,
   backgroundOpacity = 0.72,
   speedUnit = 'km/h',
+  instrumentMode = 'digital',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
   fallbackRpm = 8000,
@@ -52,7 +53,7 @@ end
 
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.2  /  central driving dial')
+  ui.text('v0.3  /  digital + analog driving dial')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
@@ -66,6 +67,11 @@ function M.draw()
   if ui.button('Speed unit: ' .. M.values.speedUnit) then
     M.values.speedUnit = M.values.speedUnit == 'km/h' and 'mph' or 'km/h'
     M.lastChange = 'Speed unit'
+  end
+
+  if ui.button('Instrument mode: ' .. (M.values.instrumentMode == 'analog' and 'Analog dial' or 'Digital dial')) then
+    M.values.instrumentMode = M.values.instrumentMode == 'analog' and 'digital' or 'analog'
+    M.lastChange = 'Instrument mode'
   end
 
   ui.separator()
