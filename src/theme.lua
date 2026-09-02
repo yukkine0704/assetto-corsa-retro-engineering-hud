@@ -15,6 +15,7 @@ Theme.colors = {
   primary = rgbm(0xF2 / 255, 0xDB / 255, 0xAE / 255, 1),
   secondary = rgbm(0x98 / 255, 0x7A / 255, 0x4C / 255, 0.95),
   amber = rgbm(0xFF / 255, 0xC4 / 255, 0x6B / 255, 1),
+  amberDim = rgbm(0x5E / 255, 0x43 / 255, 0x19 / 255, 0.92),
   cyan = rgbm(0x68 / 255, 0xB7 / 255, 0xD6 / 255, 1),
   cyanDim = rgbm(0x29 / 255, 0x56 / 255, 0x5C / 255, 0.95),
   green = rgbm(0x7E / 255, 0xC8 / 255, 0x6A / 255, 1),

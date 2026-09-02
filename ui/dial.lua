@@ -58,8 +58,8 @@ local function drawArrowBadge(center, direction, scale, active, backdrop)
     return center + vec2(x * d * scale, y * scale)
   end
 
-  local fill = active and C.cyanDim or backdrop
-  local stroke = active and C.cyan or C.outline
+  local fill = active and C.amberDim or backdrop
+  local stroke = active and C.amber or C.outline
 
   ui.pathClear()
   ui.pathLineTo(p(-38, -17))
@@ -82,6 +82,20 @@ local function drawArrowBadge(center, direction, scale, active, backdrop)
   drawLine(p(-24, 0), p(17, 0), stroke, 3.2 * scale)
   drawLine(p(2, -9), p(17, 0), stroke, 3.2 * scale)
   drawLine(p(2, 9), p(17, 0), stroke, 3.2 * scale)
+end
+
+local function indicatorLit(state, animationEnabled)
+  if not animationEnabled then return true end
+
+  if type(state.indicatorPhase) == 'boolean' then
+    return state.indicatorPhase
+  end
+
+  if type(state.indicatorPhase) == 'number' then
+    return state.indicatorPhase > 0.5
+  end
+
+  return math.floor(state.clock / Layout.indicatorBlinkPeriod) % 2 == 0
 end
 
 local function drawRpmArc(center, scale, state)
@@ -342,7 +356,8 @@ function M.draw(state, settings)
   local fittedScale = math.min(width, height) / Layout.baseSize
   local scale = fittedScale * settings.hudScale
   local designSize = Layout.baseSize * scale
-  local origin = vec2((width - designSize) / 2, (height - designSize) / 2)
+  local origin = vec2((width - designSize) / 2,
+    (height - designSize) / 2 + Layout.viewportOffsetY * scale)
   local center = point(origin, scale, Layout.centerX, Layout.centerY)
   local backdropOpacity = settings.backgroundOpacity or 0.72
   local outerSurface = Theme.withAlpha(C.void, backdropOpacity * 0.82)
@@ -366,8 +381,9 @@ function M.draw(state, settings)
 
   local leftArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-140))
   local rightArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-40))
-  local leftActive = state.hazardLights or state.leftIndicator and state.indicatorPhase ~= false
-  local rightActive = state.hazardLights or state.rightIndicator and state.indicatorPhase ~= false
+  local blinkOn = indicatorLit(state, settings.animateIndicators ~= false)
+  local leftActive = (state.hazardLights or state.leftIndicator) and blinkOn
+  local rightActive = (state.hazardLights or state.rightIndicator) and blinkOn
   drawArrowBadge(leftArrow, -1, scale * Layout.turnIndicatorScale, leftActive == true, raisedSurface)
   drawArrowBadge(rightArrow, 1, scale * Layout.turnIndicatorScale, rightActive == true, raisedSurface)
 

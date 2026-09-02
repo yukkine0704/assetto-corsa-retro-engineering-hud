@@ -5,6 +5,7 @@ return {
   baseSize = 620,
   centerX = 310,
   centerY = 304,
+  viewportOffsetY = -10,
 
   outerRadius = 286,
   innerRadius = 260,
@@ -14,49 +15,50 @@ return {
   rpmStart = math.rad(-210),
   rpmEnd = math.rad(30),
 
-  turnIndicatorRadius = 230,
-  turnIndicatorScale = 0.80,
+  turnIndicatorRadius = 228,
+  turnIndicatorScale = 0.62,
+  indicatorBlinkPeriod = 0.42,
 
-  coreFrameHalfWidth = 132,
-  coreFrameHalfHeight = 149,
+  coreFrameHalfWidth = 118,
+  coreFrameHalfHeight = 142,
   coreFrameChamfer = 22,
   coreHalfWidth = 100,
-  coreHalfHeight = 112,
+  coreHalfHeight = 108,
   coreChamfer = 18,
   coreOffsetY = 4,
 
   steeringY = 177,
   steeringHalfWidth = 66,
 
-  pedalY = 247,
-  pedalHeight = 154,
+  pedalY = 235,
+  pedalHeight = 148,
   pedalWidth = 25,
   brakeX = 132,
   throttleX = 463,
 
   speedY = 111,
   speedUnitY = 144,
-  gearY = 276,
+  gearY = 272,
   gearFontSize = 148,
-  rpmY = 401,
-  rpmLabelY = 431,
+  rpmY = 392,
+  rpmLabelY = 419,
 
-  clutchLabelY = 454,
+  clutchLabelY = 441,
   clutchX = 269,
-  clutchY = 468,
+  clutchY = 454,
   clutchWidth = 82,
   clutchHeight = 6,
 
   electronicsX = 181,
-  electronicsY = 478,
+  electronicsY = 477,
   electronicsWidth = 59,
-  electronicsHeight = 54,
+  electronicsHeight = 56,
   electronicsGap = 7,
 
-  shelfTopY = 463,
-  shelfBottomY = 545,
+  shelfTopY = 462,
+  shelfBottomY = 555,
   shelfTopHalfWidth = 154,
   shelfBottomHalfWidth = 128,
 
-  warningY = 561
+  warningY = 571
 }
