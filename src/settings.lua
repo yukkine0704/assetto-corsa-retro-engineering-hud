@@ -69,6 +69,18 @@ local function slider(label, key, minimum, maximum, format)
   end
 end
 
+-- CSP sliders work with fractions for opacity and RPM thresholds, but their
+-- printf formatter does not turn 0.86 into 86%. Draw those controls in human
+-- readable percentage points and convert back before persisting them.
+local function percentageSlider(label, key, minimum, maximum)
+  local value, changed = ui.slider(label, (M.values[key] or minimum) * 100,
+    minimum * 100, maximum * 100, '%.0f%%', 1)
+  if changed then
+    M.values[key] = value / 100
+    M.lastChange = label
+  end
+end
+
 local function resetVisualSettings()
   M.values.hudScale = 0.72
   M.values.backgroundOpacity = 0.72
@@ -90,12 +102,12 @@ end
 
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.9  /  digital + analog driving dial')
+  ui.text('v0.10  /  digital + analog driving dial')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
-  slider('Backdrop opacity', 'backgroundOpacity', 0.18, 0.82, '%.0f%%')
-  slider('Instrument opacity', 'opacity', 0.55, 1.0, '%.0f%%')
+  percentageSlider('Backdrop opacity', 'backgroundOpacity', 0.18, 0.82)
+  percentageSlider('Instrument opacity', 'opacity', 0.55, 1.0)
 
   if ui.button('Reset visual settings') then
     resetVisualSettings()
@@ -118,8 +130,8 @@ function M.draw()
 
   ui.separator()
   ui.text('RPM behavior')
-  slider('Warning threshold', 'rpmWarningFraction', 0.70, 0.98, '%.0f%%')
-  slider('Redline threshold', 'rpmRedlineFraction', 0.82, 1.0, '%.0f%%')
+  percentageSlider('Warning threshold', 'rpmWarningFraction', 0.70, 0.98)
+  percentageSlider('Redline threshold', 'rpmRedlineFraction', 0.82, 1.0)
   normalizeRpmThresholds()
   slider('Fallback RPM', 'fallbackRpm', 4000, 16000, '%.0f rpm')
 
