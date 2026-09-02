@@ -52,34 +52,17 @@ local function drawOctagon(center, halfWidth, halfHeight, chamfer, fill, stroke,
   ui.pathStroke(stroke, true, strokeWidth)
 end
 
-local function drawTurnCut(center, direction, scale, active, backdrop)
-  local halfLength = Layout.turnCutHalfLength * scale
-  local halfDepth = Layout.turnCutHalfDepth * scale
-  local radial = vec2(direction, 0)
-  local tangent = vec2(0, 1)
-  local outerTop = center + radial * halfDepth - tangent * halfLength
-  local innerTop = center - radial * halfDepth - tangent * halfLength
-  local innerBottom = center - radial * halfDepth + tangent * halfLength
-  local outerBottom = center + radial * halfDepth + tangent * halfLength
+local function drawBezelArcCut(center, radius, angle, span, scale, active, backdrop)
+  local halfWidth = Layout.bezelCutWidth * scale / 2
+  local startAngle = angle - span / 2
+  local endAngle = angle + span / 2
   local fill = active and C.amberDim or backdrop
   local stroke = active and C.amber or C.outlineDim
 
-  ui.pathClear()
-  ui.pathLineTo(outerTop)
-  ui.pathLineTo(innerTop)
-  ui.pathLineTo(innerBottom)
-  ui.pathLineTo(outerBottom)
-  ui.pathFillConvex(fill)
-
-  ui.pathClear()
-  ui.pathLineTo(outerTop)
-  ui.pathLineTo(innerTop)
-  ui.pathLineTo(innerBottom)
-  ui.pathLineTo(outerBottom)
-  ui.pathStroke(stroke, true, 1.6 * scale)
-
-  drawLine(center - tangent * (halfLength - 5 * scale),
-    center + tangent * (halfLength - 5 * scale), stroke, 2.4 * scale)
+  drawArc(center, radius, startAngle, endAngle, fill, Layout.bezelCutWidth * scale, 10)
+  drawArc(center, radius - halfWidth, startAngle, endAngle, C.outlineDim, 1.2 * scale, 10)
+  drawArc(center, radius + halfWidth, startAngle, endAngle, C.outlineDim, 1.2 * scale, 10)
+  drawArc(center, radius, startAngle, endAngle, stroke, 2.2 * scale, 10)
 end
 
 local function indicatorLit(state, animationEnabled)
@@ -104,6 +87,8 @@ local function drawRpmArc(center, scale, state, settings)
   local shiftLit = state.rpmWarning
     and (settings == nil or settings.animateShiftAlert ~= false)
     and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
+  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
+    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
 
   drawArc(center, Layout.rpmRadius * scale, Layout.rpmStart, Layout.rpmEnd,
     C.outlineDim, Layout.rpmTrackWidth * scale, 72)
@@ -112,10 +97,10 @@ local function drawRpmArc(center, scale, state, settings)
     local a1 = Layout.rpmStart + (i - 1) * span + 0.012
     local a2 = Layout.rpmStart + i * span - 0.012
     local fraction = i / segmentCount
-    local inShiftZone = fraction >= state.rpmWarningFraction and fraction < state.rpmRedlineFraction
+    local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
     local color = inShiftZone and C.shiftBlueDim or C.inactive
-    if inShiftZone and state.rpmWarning and shiftLit then
-      color = C.shiftBlue
+    if inShiftZone then
+      if state.rpmWarning and shiftLit then color = C.shiftBlue end
     elseif i <= filled then
       if fraction >= state.rpmRedlineFraction then
         color = C.red
@@ -309,18 +294,10 @@ local function drawCell(origin, scale, x, label, value, active, valueColor, draw
   end
 end
 
-local function drawWarning(origin, scale, state)
-  local center = point(origin, scale, Layout.centerX, Layout.warningY)
-  local radius = 10 * scale
-  local p1 = center + vec2(0, -radius)
-  local p2 = center + vec2(radius * 0.88, radius)
-  local p3 = center + vec2(-radius * 0.88, radius)
-  local color = (state.rpmRedline or state.handbrake > 0.9) and C.amber or C.outlineSoft
-  drawLine(p1, p2, color, 2 * scale)
-  drawLine(p2, p3, color, 2 * scale)
-  drawLine(p3, p1, color, 2 * scale)
-  drawLine(center + vec2(0, -3 * scale), center + vec2(0, 4 * scale), color, 2 * scale)
-  ui.drawCircleFilled(center + vec2(0, 7 * scale), 1.3 * scale, color, 10)
+local function drawWarningBezelCut(center, scale, state, backdrop)
+  local active = state.rpmRedline or state.handbrake > 0.9
+  drawBezelArcCut(center, Layout.bezelCutRadius * scale, math.pi / 2,
+    Layout.warningArcSpan, scale, active, backdrop)
 end
 
 local function drawScrews(center, scale)
@@ -385,13 +362,15 @@ function M.draw(state, settings)
 
   drawRpmArc(center, scale, state, settings)
 
-  local leftCut = U.polar(center, Layout.turnIndicatorRadius * scale, math.pi + Layout.turnIndicatorAngle)
-  local rightCut = U.polar(center, Layout.turnIndicatorRadius * scale, -Layout.turnIndicatorAngle)
+  local leftCutAngle = math.pi + Layout.turnIndicatorAngle
+  local rightCutAngle = -Layout.turnIndicatorAngle
   local blinkOn = indicatorLit(state, settings.animateIndicators ~= false)
   local leftActive = (state.hazardLights or state.leftIndicator) and blinkOn
   local rightActive = (state.hazardLights or state.rightIndicator) and blinkOn
-  drawTurnCut(leftCut, -1, scale, leftActive == true, outerSurface)
-  drawTurnCut(rightCut, 1, scale, rightActive == true, outerSurface)
+  drawBezelArcCut(center, Layout.bezelCutRadius * scale, leftCutAngle,
+    Layout.turnIndicatorArcSpan, scale, leftActive == true, outerSurface)
+  drawBezelArcCut(center, Layout.bezelCutRadius * scale, rightCutAngle,
+    Layout.turnIndicatorArcSpan, scale, rightActive == true, outerSurface)
 
   drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
     Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
@@ -438,7 +417,7 @@ function M.draw(state, settings)
   drawCell(origin, scale, cellX, 'PIT', pitValue, state.pitLimiter == true or state.pitLane,
     state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
 
-  drawWarning(origin, scale, state)
+  drawWarningBezelCut(center, scale, state, outerSurface)
   drawScrews(center, scale)
 
   if settings.debug then drawDebug(origin, scale, state) end

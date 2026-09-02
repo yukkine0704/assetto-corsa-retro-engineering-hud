@@ -17,12 +17,14 @@ return {
   rpmStart = math.rad(-210),
   rpmEnd = math.rad(30),
 
-  turnIndicatorRadius = 270,
-  turnIndicatorAngle = math.rad(6),
-  turnCutHalfLength = 20,
-  turnCutHalfDepth = 8,
+  bezelCutRadius = 270,
+  bezelCutWidth = 14,
+  turnIndicatorAngle = math.rad(16),
+  turnIndicatorArcSpan = math.rad(10),
+  warningArcSpan = math.rad(12),
   indicatorBlinkPeriod = 0.42,
   shiftBlinkPeriod = 0.18,
+  shiftZoneMinimumFraction = 0.14,
 
   coreFrameHalfWidth = 112,
   coreFrameHalfHeight = 142,
@@ -54,16 +56,14 @@ return {
   clutchWidth = 82,
   clutchHeight = 6,
 
-  electronicsX = 181,
-  electronicsY = 477,
-  electronicsWidth = 59,
-  electronicsHeight = 56,
-  electronicsGap = 7,
+  electronicsX = 191,
+  electronicsY = 473,
+  electronicsWidth = 55,
+  electronicsHeight = 52,
+  electronicsGap = 6,
 
-  shelfTopY = 462,
-  shelfBottomY = 555,
-  shelfTopHalfWidth = 154,
-  shelfBottomHalfWidth = 128,
-
-  warningY = 571
+  shelfTopY = 461,
+  shelfBottomY = 541,
+  shelfTopHalfWidth = 140,
+  shelfBottomHalfWidth = 106
 }
