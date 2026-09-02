@@ -189,20 +189,26 @@ local function drawAnalogDial(center, scale, state, settings, surface)
 
   local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
   local needleTip = U.polar(dialCenter, Layout.analogNeedleLength * scale, needleAngle)
-  local needleColor = state.rpmRedline and redlineColor(state, settings) or C.primary
-  drawLine(dialCenter, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 4) * scale)
+  local needleColor = state.rpmRedline and redlineColor(state, settings)
+    or (state.rpmWarning and C.amber or C.primary)
+  drawLine(dialCenter, needleTip, Theme.withAlpha(needleColor, 0.12), Layout.analogNeedleGlowWidth * scale)
+  drawLine(dialCenter, needleTip, Theme.withAlpha(needleColor, 0.32), Layout.analogNeedleHaloWidth * scale)
+  drawLine(dialCenter, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 5) * scale)
   drawLine(dialCenter, needleTip, needleColor, Layout.analogNeedleWidth * scale)
   ui.drawCircleFilled(dialCenter, 12 * scale, C.panelRaised, 24)
   ui.drawCircle(dialCenter, 12 * scale, C.outline, 24, 1.8 * scale)
   ui.drawCircleFilled(dialCenter, 4 * scale,
     state.rpmRedline and redlineColor(state, settings) or (state.rpmWarning and C.amber or C.primary), 16)
 
-  centeredText(state.gearText, Layout.analogGearFontSize * scale,
-    dialCenter + vec2(0, 34 * scale), state.rpmRedline and redlineColor(state, settings) or C.primary)
+  local gearCenter = dialCenter + vec2(0, Layout.analogGearOffsetY * scale)
+  local gearColor = state.rpmRedline and redlineColor(state, settings)
+    or (state.rpmWarning and C.amber or C.primary)
+  ui.drawCircleFilled(gearCenter, Layout.analogGearPodRadius * scale, C.panelRaised, 32)
+  ui.drawCircle(gearCenter, Layout.analogGearPodRadius * scale, C.outlineSoft, 32, 1.6 * scale)
+  ui.drawCircle(gearCenter, (Layout.analogGearPodRadius - 5) * scale, C.outlineDim, 32, 1 * scale)
+  centeredText(state.gearText, Layout.analogGearFontSize * scale, gearCenter + vec2(0, 3 * scale), gearColor)
   centeredText(state.speedText, Layout.analogSpeedFontSize * scale,
     dialCenter + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
-  centeredText(state.speedUnit, 12 * scale,
-    dialCenter + vec2(0, (Layout.analogSpeedOffsetY + 20) * scale), C.secondary)
 end
 
 local function drawAnalogAuxiliary(center, origin, scale, state, settings)
