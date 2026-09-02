@@ -31,6 +31,29 @@ if (M.values.layoutVersion or 1) < 3 then
   M.values.layoutVersion = 3
 end
 
+-- A previous settings build could leave both RPM thresholds at 100%. That
+-- makes the shift band look permanently dim and prevents the core from ever
+-- reaching its amber/red states before the limiter. Restore the intended
+-- staged range once, while retaining every other user preference.
+if (M.values.layoutVersion or 1) < 4 then
+  if (M.values.rpmWarningFraction or 0) >= 0.999 then
+    M.values.rpmWarningFraction = 0.86
+  end
+  if (M.values.rpmRedlineFraction or 0) >= 0.999 then
+    M.values.rpmRedlineFraction = 0.96
+  end
+  M.values.animateShiftAlert = true
+  M.values.animateRedlineAlert = true
+  M.values.layoutVersion = 4
+end
+
+local function normalizeRpmThresholds()
+  local redline = math.max(0.82, math.min(M.values.rpmRedlineFraction or 0.96, 1.0))
+  local warning = math.max(0.70, math.min(M.values.rpmWarningFraction or 0.86, 0.98))
+  M.values.rpmRedlineFraction = redline
+  M.values.rpmWarningFraction = math.min(warning, redline - 0.04)
+end
+
 local function checkbox(label, key)
   if ui.checkbox(label, M.values[key]) then
     M.values[key] = not M.values[key]
@@ -97,6 +120,7 @@ function M.draw()
   ui.text('RPM behavior')
   slider('Warning threshold', 'rpmWarningFraction', 0.70, 0.98, '%.0f%%')
   slider('Redline threshold', 'rpmRedlineFraction', 0.82, 1.0, '%.0f%%')
+  normalizeRpmThresholds()
   slider('Fallback RPM', 'fallbackRpm', 4000, 16000, '%.0f rpm')
 
   ui.separator()

@@ -505,10 +505,10 @@ function M.draw(state, settings)
     local coreAlertSurface = coreSurface
     local coreAlertBorder = C.cyanDim
     if state.rpmRedline then
-      coreAlertSurface = Theme.withAlpha(C.redDim, math.min(0.94, backdropOpacity + 0.18))
+      coreAlertSurface = Theme.withAlpha(C.coreRed, math.min(0.94, backdropOpacity + 0.18))
       coreAlertBorder = redlineColor(state, settings)
     elseif state.rpmWarning then
-      coreAlertSurface = Theme.withAlpha(C.amberDim, math.min(0.94, backdropOpacity + 0.18))
+      coreAlertSurface = Theme.withAlpha(C.coreAmber, math.min(0.94, backdropOpacity + 0.18))
       coreAlertBorder = C.amber
     end
     drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,

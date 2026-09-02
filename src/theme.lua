@@ -16,6 +16,7 @@ Theme.colors = {
   secondary = rgbm(0x98 / 255, 0x7A / 255, 0x4C / 255, 0.95),
   amber = rgbm(0xFF / 255, 0xC4 / 255, 0x6B / 255, 1),
   amberDim = rgbm(0x5E / 255, 0x43 / 255, 0x19 / 255, 0.92),
+  coreAmber = rgbm(0x9A / 255, 0x63 / 255, 0x16 / 255, 0.94),
   cyan = rgbm(0x68 / 255, 0xB7 / 255, 0xD6 / 255, 1),
   cyanDim = rgbm(0x29 / 255, 0x56 / 255, 0x5C / 255, 0.95),
   shiftBlue = rgbm(0x46 / 255, 0x9B / 255, 0xCA / 255, 1),
@@ -23,6 +24,7 @@ Theme.colors = {
   green = rgbm(0x7E / 255, 0xC8 / 255, 0x6A / 255, 1),
   red = rgbm(0xD8 / 255, 0x4B / 255, 0x3E / 255, 1),
   redDim = rgbm(0x52 / 255, 0x1B / 255, 0x18 / 255, 0.92),
+  coreRed = rgbm(0x83 / 255, 0x24 / 255, 0x1B / 255, 0.94),
   inactive = rgbm(0x2A / 255, 0x21 / 255, 0x17 / 255, 0.92),
   debug = rgbm(0x0B / 255, 0x09 / 255, 0x07 / 255, 0.94)
 }
