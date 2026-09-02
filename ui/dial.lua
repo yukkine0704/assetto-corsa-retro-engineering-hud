@@ -124,6 +124,7 @@ local function drawRpmArc(center, scale, state, settings)
 end
 
 local function drawAnalogDial(center, scale, state, settings, surface)
+  local dialCenter = center + vec2(0, Layout.analogDialOffsetY * scale)
   local dialRadius = Layout.analogDialRadius * scale
   local tickRadius = Layout.analogTickRadius * scale
   local tickCount = Layout.analogMinorTickCount
@@ -134,9 +135,9 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
     state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
 
-  ui.drawCircleFilled(center, dialRadius, surface, 96)
-  ui.drawCircle(center, dialRadius, C.outlineSoft, 96, 1.7 * scale)
-  drawArc(center, tickRadius, Layout.rpmStart, Layout.rpmEnd, C.outlineDim, 2 * scale, 72)
+  ui.drawCircleFilled(dialCenter, dialRadius, surface, 96)
+  ui.drawCircle(dialCenter, dialRadius, C.outlineSoft, 96, 1.7 * scale)
+  drawArc(dialCenter, tickRadius, Layout.rpmStart, Layout.rpmEnd, C.outlineDim, 2 * scale, 72)
 
   for i = 0, tickCount do
     local fraction = i / tickCount
@@ -152,14 +153,14 @@ local function drawAnalogDial(center, scale, state, settings, surface)
       color = C.primary
     end
     local length = (major and 15 or 7) * scale
-    local outer = U.polar(center, tickRadius, angle)
-    local inner = U.polar(center, tickRadius - length, angle)
+    local outer = U.polar(dialCenter, tickRadius, angle)
+    local inner = U.polar(dialCenter, tickRadius - length, angle)
     drawLine(inner, outer, color, (major and 2.6 or 1.4) * scale)
   end
 
   for i = 0, 9 do
     local angle = Layout.rpmStart + span * i / 9
-    local labelPosition = U.polar(center, tickRadius - 31 * scale, angle)
+    local labelPosition = U.polar(dialCenter, tickRadius - 31 * scale, angle)
     local fraction = i / 9
     local color = fraction >= state.rpmRedlineFraction and C.red
       or (fraction >= shiftZoneStart and C.shiftBlueDim or C.primary)
@@ -167,20 +168,79 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   end
 
   local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
-  local needleTip = U.polar(center, Layout.analogNeedleLength * scale, needleAngle)
+  local needleTip = U.polar(dialCenter, Layout.analogNeedleLength * scale, needleAngle)
   local needleColor = state.rpmRedline and C.red or C.primary
-  drawLine(center, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 4) * scale)
-  drawLine(center, needleTip, needleColor, Layout.analogNeedleWidth * scale)
-  ui.drawCircleFilled(center, 12 * scale, C.panelRaised, 24)
-  ui.drawCircle(center, 12 * scale, C.outline, 24, 1.8 * scale)
-  ui.drawCircleFilled(center, 4 * scale, state.rpmWarning and C.amber or C.primary, 16)
+  drawLine(dialCenter, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 4) * scale)
+  drawLine(dialCenter, needleTip, needleColor, Layout.analogNeedleWidth * scale)
+  ui.drawCircleFilled(dialCenter, 12 * scale, C.panelRaised, 24)
+  ui.drawCircle(dialCenter, 12 * scale, C.outline, 24, 1.8 * scale)
+  ui.drawCircleFilled(dialCenter, 4 * scale, state.rpmWarning and C.amber or C.primary, 16)
 
   centeredText(state.gearText, Layout.analogGearFontSize * scale,
-    center + vec2(0, 34 * scale), state.rpmRedline and C.amber or C.primary)
+    dialCenter + vec2(0, 34 * scale), state.rpmRedline and C.amber or C.primary)
   centeredText(state.speedText, Layout.analogSpeedFontSize * scale,
-    center + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
+    dialCenter + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
   centeredText(state.speedUnit, 12 * scale,
-    center + vec2(0, (Layout.analogSpeedOffsetY + 20) * scale), C.secondary)
+    dialCenter + vec2(0, (Layout.analogSpeedOffsetY + 20) * scale), C.secondary)
+end
+
+local function drawAnalogAuxiliary(origin, scale, state, settings, panel)
+  local requestedMode = settings.analogAuxiliaryMode or 'auto'
+  if requestedMode == 'off' then return end
+
+  local useTurbo = requestedMode == 'turbo' or (requestedMode == 'auto' and state.turboAvailable)
+  local available = useTurbo and state.turboAvailable or state.fuel ~= nil and state.maxFuel ~= nil
+  local label = useTurbo and 'TURBO' or 'FUEL'
+  local value = 'N/A'
+  local normalized = 0
+  local accent = C.secondary
+  if useTurbo and state.turboAvailable then
+    value = string.format('%.2f BAR', state.turboBoost)
+    normalized = U.clamp(state.turboBoost / state.turboDisplayMax, 0, 1)
+    accent = C.cyan
+  elseif not useTurbo and available then
+    value = string.format('%.0f L', state.fuel)
+    normalized = state.fuelNormalized
+    accent = normalized < 0.15 and C.red or C.primary
+  end
+
+  local y = Layout.analogAuxY
+  local top = y * scale
+  local bottom = (y + Layout.analogAuxHeight) * scale
+  local cx = Layout.centerX * scale
+  local topHalf = Layout.analogAuxTopHalfWidth * scale
+  local bottomHalf = Layout.analogAuxBottomHalfWidth * scale
+  local chamfer = 7 * scale
+  local topLeft = origin + vec2(cx - topHalf, top)
+  local topRight = origin + vec2(cx + topHalf, top)
+  local bottomLeft = origin + vec2(cx - bottomHalf, bottom)
+  local bottomRight = origin + vec2(cx + bottomHalf, bottom)
+
+  ui.pathClear()
+  ui.pathLineTo(topLeft + vec2(chamfer, 0))
+  ui.pathLineTo(topRight - vec2(chamfer, 0))
+  ui.pathLineTo(topRight)
+  ui.pathLineTo(bottomRight)
+  ui.pathLineTo(bottomLeft)
+  ui.pathLineTo(topLeft)
+  ui.pathFillConvex(panel)
+
+  ui.pathClear()
+  ui.pathLineTo(topLeft + vec2(chamfer, 0))
+  ui.pathLineTo(topRight - vec2(chamfer, 0))
+  ui.pathLineTo(topRight)
+  ui.pathLineTo(bottomRight)
+  ui.pathLineTo(bottomLeft)
+  ui.pathLineTo(topLeft)
+  ui.pathStroke(C.outlineSoft, true, 1.4 * scale)
+
+  centeredText(label, 11 * scale, point(origin, scale, Layout.centerX - 70, y + 10), C.secondary)
+  centeredText(value, 13 * scale, point(origin, scale, Layout.centerX + 50, y + 10), accent)
+  local barWidth = Layout.analogAuxBarWidth * scale
+  local barHeight = Layout.analogAuxBarHeight * scale
+  local barTopLeft = point(origin, scale, Layout.centerX - Layout.analogAuxBarWidth / 2, y + 21)
+  ui.drawRectFilled(barTopLeft, barTopLeft + vec2(barWidth, barHeight), C.inactive)
+  ui.drawRectFilled(barTopLeft, barTopLeft + vec2(barWidth * normalized, barHeight), accent)
 end
 
 local function drawSpeedBrackets(origin, scale)
@@ -435,6 +495,8 @@ function M.draw(state, settings)
 
   if analogMode then
     drawAnalogDial(center, scale, state, settings, coreSurface)
+    drawAnalogAuxiliary(origin, scale, state, settings,
+      Theme.withAlpha(C.panelRaised, backdropOpacity * 0.78))
   else
     drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
       Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)

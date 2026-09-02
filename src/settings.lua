@@ -9,6 +9,7 @@ M.values = ac.storage({
   backgroundOpacity = 0.72,
   speedUnit = 'km/h',
   instrumentMode = 'digital',
+  analogAuxiliaryMode = 'auto',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
   fallbackRpm = 8000,
@@ -51,9 +52,21 @@ local function resetVisualSettings()
   M.lastChange = 'Visual settings reset'
 end
 
+local function nextAnalogAuxiliaryMode()
+  local modes = { 'auto', 'turbo', 'fuel', 'off' }
+  local current = M.values.analogAuxiliaryMode or 'auto'
+  for i, mode in ipairs(modes) do
+    if mode == current then
+      M.values.analogAuxiliaryMode = modes[i % #modes + 1]
+      return
+    end
+  end
+  M.values.analogAuxiliaryMode = 'auto'
+end
+
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.3  /  digital + analog driving dial')
+  ui.text('v0.4  /  digital + analog driving dial')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
@@ -72,6 +85,11 @@ function M.draw()
   if ui.button('Instrument mode: ' .. (M.values.instrumentMode == 'analog' and 'Analog dial' or 'Digital dial')) then
     M.values.instrumentMode = M.values.instrumentMode == 'analog' and 'digital' or 'analog'
     M.lastChange = 'Instrument mode'
+  end
+
+  if ui.button('Analog lower gauge: ' .. string.upper(M.values.analogAuxiliaryMode or 'auto')) then
+    nextAnalogAuxiliaryMode()
+    M.lastChange = 'Analog lower gauge'
   end
 
   ui.separator()

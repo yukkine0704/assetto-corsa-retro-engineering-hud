@@ -20,6 +20,12 @@ local function blankState()
     rpmNormalized = 0,
     analogNeedleNormalized = 0,
     analogNeedleVelocity = 0,
+    fuel = nil,
+    maxFuel = nil,
+    fuelNormalized = 0,
+    turboAvailable = false,
+    turboBoost = 0,
+    turboDisplayMax = 1,
     rpmWarningFraction = 0.86,
     rpmRedlineFraction = 0.96,
     rpmWarning = false,
@@ -157,6 +163,19 @@ function M.update(state, dt, settings)
   local rawClutch = U.number(U.read(car, 'clutch', nil), nil)
   state.clutch = rawClutch and U.clamp(1 - rawClutch, 0, 1) or 0
   state.handbrake = U.clamp(U.number(U.read(car, 'handbrake', 0), 0), 0, 1)
+
+  state.fuel = U.number(U.read(car, 'fuel', nil), nil)
+  state.maxFuel = U.number(U.read(car, 'maxFuel', nil), nil)
+  state.fuelNormalized = state.fuel and state.maxFuel and state.maxFuel > 0.1
+    and U.clamp(state.fuel / state.maxFuel, 0, 1) or 0
+  local turboCount = U.number(U.read(car, 'turboCount', 0), 0)
+  state.turboAvailable = turboCount > 0
+  state.turboBoost = math.max(0, U.number(U.read(car, 'turboBoost', 0), 0))
+  if state.turboAvailable then
+    state.turboDisplayMax = math.max(state.turboDisplayMax, 1, math.ceil(state.turboBoost * 2) / 2)
+  else
+    state.turboDisplayMax = 1
+  end
 
   local tcModes = U.number(U.read(car, 'tractionControlModes', nil), nil)
   state.tcSupported = tcModes ~= nil and tcModes > 0
