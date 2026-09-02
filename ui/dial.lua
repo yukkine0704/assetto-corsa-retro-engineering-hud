@@ -502,10 +502,19 @@ function M.draw(state, settings)
     drawRedlinePulse(analogCenter, (Layout.analogDialRadius - 8) * scale, scale, state, settings)
     drawAnalogAuxiliary(center, origin, scale, state, settings)
   else
+    local coreAlertSurface = coreSurface
+    local coreAlertBorder = C.cyanDim
+    if state.rpmRedline then
+      coreAlertSurface = Theme.withAlpha(C.redDim, math.min(0.94, backdropOpacity + 0.18))
+      coreAlertBorder = redlineColor(state, settings)
+    elseif state.rpmWarning then
+      coreAlertSurface = Theme.withAlpha(C.amberDim, math.min(0.94, backdropOpacity + 0.18))
+      coreAlertBorder = C.amber
+    end
     drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
       Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
     drawOctagon(center + vec2(0, Layout.coreOffsetY * scale), Layout.coreHalfWidth * scale,
-      Layout.coreHalfHeight * scale, Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
+      Layout.coreHalfHeight * scale, Layout.coreChamfer * scale, coreAlertSurface, coreAlertBorder, 2 * scale)
     drawSteering(center, origin, scale, {
       showSteering = settings.showSteering,
       steeringInput = state.steeringInput,
@@ -520,7 +529,8 @@ function M.draw(state, settings)
     centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
     centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
     drawSpeedBrackets(origin, scale)
-    local digitalAlertColor = state.rpmRedline and redlineColor(state, settings) or C.primary
+    local digitalAlertColor = state.rpmRedline and redlineColor(state, settings)
+      or (state.rpmWarning and C.amber or C.primary)
     centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), digitalAlertColor)
     centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY),
       state.rpmRedline and digitalAlertColor or (state.rpmWarning and C.amber or C.primary))
