@@ -52,36 +52,34 @@ local function drawOctagon(center, halfWidth, halfHeight, chamfer, fill, stroke,
   ui.pathStroke(stroke, true, strokeWidth)
 end
 
-local function drawArrowBadge(center, direction, scale, active, backdrop)
-  local d = direction
-  local function p(x, y)
-    return center + vec2(x * d * scale, y * scale)
-  end
-
+local function drawTurnCut(center, direction, scale, active, backdrop)
+  local halfLength = Layout.turnCutHalfLength * scale
+  local halfDepth = Layout.turnCutHalfDepth * scale
+  local radial = vec2(direction, 0)
+  local tangent = vec2(0, 1)
+  local outerTop = center + radial * halfDepth - tangent * halfLength
+  local innerTop = center - radial * halfDepth - tangent * halfLength
+  local innerBottom = center - radial * halfDepth + tangent * halfLength
+  local outerBottom = center + radial * halfDepth + tangent * halfLength
   local fill = active and C.amberDim or backdrop
-  local stroke = active and C.amber or C.outline
+  local stroke = active and C.amber or C.outlineDim
 
   ui.pathClear()
-  ui.pathLineTo(p(-38, -17))
-  ui.pathLineTo(p(18, -17))
-  ui.pathLineTo(p(38, 0))
-  ui.pathLineTo(p(18, 17))
-  ui.pathLineTo(p(-38, 17))
-  ui.pathLineTo(p(-47, 0))
+  ui.pathLineTo(outerTop)
+  ui.pathLineTo(innerTop)
+  ui.pathLineTo(innerBottom)
+  ui.pathLineTo(outerBottom)
   ui.pathFillConvex(fill)
 
   ui.pathClear()
-  ui.pathLineTo(p(-38, -17))
-  ui.pathLineTo(p(18, -17))
-  ui.pathLineTo(p(38, 0))
-  ui.pathLineTo(p(18, 17))
-  ui.pathLineTo(p(-38, 17))
-  ui.pathLineTo(p(-47, 0))
-  ui.pathStroke(stroke, true, 2.0 * scale)
+  ui.pathLineTo(outerTop)
+  ui.pathLineTo(innerTop)
+  ui.pathLineTo(innerBottom)
+  ui.pathLineTo(outerBottom)
+  ui.pathStroke(stroke, true, 1.6 * scale)
 
-  drawLine(p(-24, 0), p(17, 0), stroke, 3.2 * scale)
-  drawLine(p(2, -9), p(17, 0), stroke, 3.2 * scale)
-  drawLine(p(2, 9), p(17, 0), stroke, 3.2 * scale)
+  drawLine(center - tangent * (halfLength - 5 * scale),
+    center + tangent * (halfLength - 5 * scale), stroke, 2.4 * scale)
 end
 
 local function indicatorLit(state, animationEnabled)
@@ -387,13 +385,13 @@ function M.draw(state, settings)
 
   drawRpmArc(center, scale, state, settings)
 
-  local leftArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-140))
-  local rightArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-40))
+  local leftCut = U.polar(center, Layout.turnIndicatorRadius * scale, math.pi + Layout.turnIndicatorAngle)
+  local rightCut = U.polar(center, Layout.turnIndicatorRadius * scale, -Layout.turnIndicatorAngle)
   local blinkOn = indicatorLit(state, settings.animateIndicators ~= false)
   local leftActive = (state.hazardLights or state.leftIndicator) and blinkOn
   local rightActive = (state.hazardLights or state.rightIndicator) and blinkOn
-  drawArrowBadge(leftArrow, -1, scale * Layout.turnIndicatorScale, leftActive == true, raisedSurface)
-  drawArrowBadge(rightArrow, 1, scale * Layout.turnIndicatorScale, rightActive == true, raisedSurface)
+  drawTurnCut(leftCut, -1, scale, leftActive == true, outerSurface)
+  drawTurnCut(rightCut, 1, scale, rightActive == true, outerSurface)
 
   drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
     Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)

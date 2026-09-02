@@ -17,8 +17,10 @@ return {
   rpmStart = math.rad(-210),
   rpmEnd = math.rad(30),
 
-  turnIndicatorRadius = 254,
-  turnIndicatorScale = 0.48,
+  turnIndicatorRadius = 270,
+  turnIndicatorAngle = math.rad(6),
+  turnCutHalfLength = 20,
+  turnCutHalfDepth = 8,
   indicatorBlinkPeriod = 0.42,
   shiftBlinkPeriod = 0.18,
 
@@ -36,8 +38,8 @@ return {
   pedalY = 235,
   pedalHeight = 148,
   pedalWidth = 25,
-  brakeX = 120,
-  throttleX = 455,
+  brakeX = 145,
+  throttleX = 440,
 
   speedY = 111,
   speedUnitY = 144,
