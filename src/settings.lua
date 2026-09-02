@@ -4,7 +4,7 @@ M.values = ac.storage({
   layoutVersion = 1,
   hudScale = 0.72,
   opacity = 1.0,
-  backgroundOpacity = 0.54,
+  backgroundOpacity = 0.72,
   speedUnit = 'km/h',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
@@ -18,9 +18,10 @@ M.values = ac.storage({
 
 -- Existing installs have a saved v0.1 scale. Keep a user-selected smaller
 -- value, but migrate oversized values to the compact v0.2 presentation once.
-if (M.values.layoutVersion or 1) < 2 then
+if (M.values.layoutVersion or 1) < 3 then
   M.values.hudScale = math.min(M.values.hudScale or 0.72, 0.72)
-  M.values.layoutVersion = 2
+  M.values.backgroundOpacity = math.max(M.values.backgroundOpacity or 0.72, 0.72)
+  M.values.layoutVersion = 3
 end
 
 local function checkbox(label, key)
@@ -31,7 +32,7 @@ end
 
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.1  /  central driving dial')
+  ui.text('v0.2  /  central driving dial')
   ui.separator()
 
   M.values.hudScale = ui.slider('HUD scale', M.values.hudScale, 0.55, 1.15, '%.2fx', 2)

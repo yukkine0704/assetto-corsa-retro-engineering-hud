@@ -14,11 +14,16 @@ return {
   rpmStart = math.rad(-210),
   rpmEnd = math.rad(30),
 
-  turnIndicatorRadius = 263,
+  turnIndicatorRadius = 230,
+  turnIndicatorScale = 0.80,
 
-  coreHalfWidth = 148,
-  coreHalfHeight = 151,
-  coreChamfer = 24,
+  coreFrameHalfWidth = 132,
+  coreFrameHalfHeight = 149,
+  coreFrameChamfer = 22,
+  coreHalfWidth = 108,
+  coreHalfHeight = 112,
+  coreChamfer = 18,
+  coreOffsetY = 4,
 
   steeringY = 177,
   steeringHalfWidth = 66,
@@ -42,11 +47,16 @@ return {
   clutchWidth = 82,
   clutchHeight = 6,
 
-  electronicsX = 143,
-  electronicsY = 497,
-  electronicsWidth = 78,
-  electronicsHeight = 62,
-  electronicsGap = 8,
+  electronicsX = 181,
+  electronicsY = 478,
+  electronicsWidth = 59,
+  electronicsHeight = 54,
+  electronicsGap = 7,
 
-  warningY = 580
+  shelfTopY = 463,
+  shelfBottomY = 545,
+  shelfTopHalfWidth = 154,
+  shelfBottomHalfWidth = 128,
+
+  warningY = 561
 }

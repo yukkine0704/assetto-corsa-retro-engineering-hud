@@ -116,7 +116,7 @@ local function drawRpmArc(center, scale, state)
     local tickOuter = U.polar(center, Layout.rpmRadius * scale - 8 * scale, angle)
     drawLine(tickInner, tickOuter, i >= 8 and C.red or C.outline, 2 * scale)
     local labelPosition = U.polar(center, Layout.rpmRadius * scale - 38 * scale, angle)
-    centeredText(tostring(i), 15 * scale, labelPosition, i >= 8 and C.primary or C.secondary)
+    centeredText(tostring(i), 22 * scale, labelPosition, i >= 8 and C.primary or C.secondary)
   end
 end
 
@@ -134,12 +134,11 @@ local function drawSteering(center, origin, scale, state)
   ui.drawCircleFilled(point(origin, scale, markerX, Layout.steeringY), 5 * scale,
     math.abs(state.steeringInput) > 0.04 and C.cyan or C.primary, 18)
 
-  centeredText('STEERING', 11 * scale, point(origin, scale, Layout.centerX, Layout.steeringY - 16), C.secondary)
   local steeringLabel = state.steeringAngle and string.format('%+03d°', U.round(state.steeringAngle)) or 'INPUT'
-  centeredText(steeringLabel, 10 * scale, point(origin, scale, Layout.centerX, Layout.steeringY + 17), C.secondary)
+  centeredText(steeringLabel, 9 * scale, point(origin, scale, Layout.centerX, Layout.steeringY + 15), C.secondary)
 end
 
-local function drawPedalBar(origin, scale, x, label, value, color, labelColor, inactiveColor)
+local function drawPedalBar(origin, scale, x, label, value, color, labelColor, inactiveColor, panelColor)
   local y = Layout.pedalY
   local width = Layout.pedalWidth
   local height = Layout.pedalHeight
@@ -147,6 +146,34 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   local gap = 3 * scale
   local segmentHeight = (height * scale - gap * (segmentCount - 1)) / segmentCount
   local filled = math.floor(value * segmentCount + 0.5)
+
+  local housingLeft = (x - 14) * scale
+  local housingRight = (x + width + 14) * scale
+  local housingTop = (y - 38) * scale
+  local housingBottom = (y + height + 17) * scale
+  local chamfer = 10 * scale
+
+  ui.pathClear()
+  ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingTop))
+  ui.pathLineTo(origin + vec2(housingRight - chamfer, housingTop))
+  ui.pathLineTo(origin + vec2(housingRight, housingTop + chamfer))
+  ui.pathLineTo(origin + vec2(housingRight, housingBottom - chamfer))
+  ui.pathLineTo(origin + vec2(housingRight - chamfer, housingBottom))
+  ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingBottom))
+  ui.pathLineTo(origin + vec2(housingLeft, housingBottom - chamfer))
+  ui.pathLineTo(origin + vec2(housingLeft, housingTop + chamfer))
+  ui.pathFillConvex(panelColor)
+
+  ui.pathClear()
+  ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingTop))
+  ui.pathLineTo(origin + vec2(housingRight - chamfer, housingTop))
+  ui.pathLineTo(origin + vec2(housingRight, housingTop + chamfer))
+  ui.pathLineTo(origin + vec2(housingRight, housingBottom - chamfer))
+  ui.pathLineTo(origin + vec2(housingRight - chamfer, housingBottom))
+  ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingBottom))
+  ui.pathLineTo(origin + vec2(housingLeft, housingBottom - chamfer))
+  ui.pathLineTo(origin + vec2(housingLeft, housingTop + chamfer))
+  ui.pathStroke(C.outlineSoft, true, 1.4 * scale)
 
   centeredText(label, 12 * scale, point(origin, scale, x + width / 2, y - 16), labelColor)
   for i = 1, segmentCount do
@@ -164,6 +191,33 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   drawLine(tr, br, C.outlineSoft, 1.5 * scale)
   drawLine(br, bl, C.outlineSoft, 1.5 * scale)
   drawLine(bl, tl, C.outlineSoft, 1.5 * scale)
+end
+
+local function drawElectronicsShelf(origin, scale, panelColor)
+  local cx = Layout.centerX * scale
+  local top = Layout.shelfTopY * scale
+  local bottom = Layout.shelfBottomY * scale
+  local topHalf = Layout.shelfTopHalfWidth * scale
+  local bottomHalf = Layout.shelfBottomHalfWidth * scale
+  local notch = 10 * scale
+
+  ui.pathClear()
+  ui.pathLineTo(origin + vec2(cx - topHalf + notch, top))
+  ui.pathLineTo(origin + vec2(cx + topHalf - notch, top))
+  ui.pathLineTo(origin + vec2(cx + topHalf, top + notch))
+  ui.pathLineTo(origin + vec2(cx + bottomHalf, bottom))
+  ui.pathLineTo(origin + vec2(cx - bottomHalf, bottom))
+  ui.pathLineTo(origin + vec2(cx - topHalf, top + notch))
+  ui.pathFillConvex(panelColor)
+
+  ui.pathClear()
+  ui.pathLineTo(origin + vec2(cx - topHalf + notch, top))
+  ui.pathLineTo(origin + vec2(cx + topHalf - notch, top))
+  ui.pathLineTo(origin + vec2(cx + topHalf, top + notch))
+  ui.pathLineTo(origin + vec2(cx + bottomHalf, bottom))
+  ui.pathLineTo(origin + vec2(cx - bottomHalf, bottom))
+  ui.pathLineTo(origin + vec2(cx - topHalf, top + notch))
+  ui.pathStroke(C.outlineDim, true, 1.5 * scale)
 end
 
 local function drawClutch(origin, scale, state)
@@ -278,7 +332,7 @@ function M.draw(state, settings)
   local designSize = Layout.baseSize * scale
   local origin = vec2((width - designSize) / 2, (height - designSize) / 2)
   local center = point(origin, scale, Layout.centerX, Layout.centerY)
-  local backdropOpacity = settings.backgroundOpacity or 0.54
+  local backdropOpacity = settings.backgroundOpacity or 0.72
   local outerSurface = Theme.withAlpha(C.void, backdropOpacity * 0.82)
   local innerSurface = Theme.withAlpha(C.surface, backdropOpacity)
   local coreSurface = Theme.withAlpha(C.panel, math.min(0.92, backdropOpacity + 0.16))
@@ -291,7 +345,8 @@ function M.draw(state, settings)
   ui.drawCircleFilled(center, Layout.outerRadius * scale, outerSurface, 96)
   ui.drawCircleFilled(center, Layout.innerRadius * scale, innerSurface, 96)
   ui.drawCircle(center, Layout.outerRadius * scale, C.outlineSoft, 96, 3 * scale)
-  ui.drawCircle(center, (Layout.outerRadius - 8) * scale, C.outlineDim, 96, 2 * scale)
+  ui.drawCircle(center, (Layout.outerRadius - 7) * scale, C.outline, 96, 2 * scale)
+  ui.drawCircle(center, (Layout.outerRadius - 14) * scale, C.outlineDim, 96, 5 * scale)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
   drawRpmArc(center, scale, state)
@@ -300,25 +355,31 @@ function M.draw(state, settings)
   local rightArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-40))
   local leftActive = state.hazardLights or state.leftIndicator and state.indicatorPhase ~= false
   local rightActive = state.hazardLights or state.rightIndicator and state.indicatorPhase ~= false
-  drawArrowBadge(leftArrow, -1, scale, leftActive == true, raisedSurface)
-  drawArrowBadge(rightArrow, 1, scale, rightActive == true, raisedSurface)
+  drawArrowBadge(leftArrow, -1, scale * Layout.turnIndicatorScale, leftActive == true, raisedSurface)
+  drawArrowBadge(rightArrow, 1, scale * Layout.turnIndicatorScale, rightActive == true, raisedSurface)
 
-  drawOctagon(center, Layout.coreHalfWidth * scale, Layout.coreHalfHeight * scale,
-    Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
+  drawOctagon(center, Layout.coreFrameHalfWidth * scale, Layout.coreFrameHalfHeight * scale,
+    Layout.coreFrameChamfer * scale, Theme.withAlpha(C.panel, backdropOpacity * 0.24), C.outlineSoft, 1.4 * scale)
+  drawOctagon(center + vec2(0, Layout.coreOffsetY * scale), Layout.coreHalfWidth * scale,
+    Layout.coreHalfHeight * scale, Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
   drawSteering(center, origin, scale, {
     showSteering = settings.showSteering,
     steeringInput = state.steeringInput,
     steeringAngle = state.steeringAngle
   })
 
-  drawPedalBar(origin, scale, Layout.brakeX, 'BRAKE', state.brake, C.red, C.primary, inactiveSurface)
-  drawPedalBar(origin, scale, Layout.throttleX, 'THROTTLE', state.throttle, C.cyan, C.primary, inactiveSurface)
+  drawPedalBar(origin, scale, Layout.brakeX, 'BRAKE', state.brake, C.red, C.primary,
+    inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
+  drawPedalBar(origin, scale, Layout.throttleX, 'THROTTLE', state.throttle, C.cyan, C.primary,
+    inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
 
   centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
   centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
   centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), state.rpmRedline and C.amber or C.primary)
-  centeredText(state.rpmText, 31 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
+  centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY), state.rpmWarning and C.amber or C.primary)
   centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
+
+  drawElectronicsShelf(origin, scale, Theme.withAlpha(C.panelRaised, backdropOpacity * 0.72))
 
   if settings.showClutch then drawClutch(origin, scale, state) end
 
