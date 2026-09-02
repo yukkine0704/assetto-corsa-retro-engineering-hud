@@ -67,7 +67,7 @@ end
 
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.7  /  digital + analog driving dial')
+  ui.text('v0.8  /  digital + analog driving dial')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')

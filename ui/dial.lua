@@ -116,12 +116,12 @@ local function drawRpmArc(center, scale, state, settings)
     local a2 = Layout.rpmStart + i * span - 0.012
     local fraction = i / segmentCount
     local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
-    local color = inShiftZone and C.shiftBlueDim or C.inactive
-    if inShiftZone then
-      if state.rpmWarning and shiftLit then color = C.shiftBlue end
-    elseif i <= filled then
+    local color = C.inactive
+    if i <= filled then
       if fraction >= state.rpmRedlineFraction then
         color = state.rpmRedline and redlineColor(state, settings) or C.red
+      elseif inShiftZone then
+        color = state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
       else
         color = C.primary
       end
