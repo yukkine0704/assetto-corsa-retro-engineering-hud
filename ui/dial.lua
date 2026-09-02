@@ -492,8 +492,8 @@ function M.draw(state, settings)
     drawRedlinePulse(center, Layout.rpmRadius * scale, scale, state, settings)
   end
 
-  local leftCutAngle = math.pi + Layout.turnIndicatorAngle
-  local rightCutAngle = -Layout.turnIndicatorAngle
+  local leftCutAngle = math.pi - Layout.turnIndicatorAngle
+  local rightCutAngle = Layout.turnIndicatorAngle
   local blinkOn = indicatorLit(state, settings.animateIndicators ~= false)
   local leftActive = (state.hazardLights or state.leftIndicator) and blinkOn
   local rightActive = (state.hazardLights or state.rightIndicator) and blinkOn

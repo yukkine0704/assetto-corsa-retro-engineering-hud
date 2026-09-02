@@ -19,8 +19,10 @@ return {
 
   bezelCutRadius = 276,
   bezelCutWidth = 14,
-  turnIndicatorAngle = math.rad(16),
-  turnIndicatorArcSpan = math.rad(10),
+  -- Turn indicators sit in the lower half of the side bezel and use a longer
+  -- curved cut, making them readable without competing with the RPM arc.
+  turnIndicatorAngle = math.rad(10),
+  turnIndicatorArcSpan = math.rad(26),
   warningArcSpan = math.rad(12),
   indicatorBlinkPeriod = 0.42,
   shiftBlinkPeriod = 0.14,
