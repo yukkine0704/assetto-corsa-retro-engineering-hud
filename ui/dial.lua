@@ -52,13 +52,13 @@ local function drawOctagon(center, halfWidth, halfHeight, chamfer, fill, stroke,
   ui.pathStroke(stroke, true, strokeWidth)
 end
 
-local function drawArrowBadge(center, direction, scale, active)
+local function drawArrowBadge(center, direction, scale, active, backdrop)
   local d = direction
   local function p(x, y)
     return center + vec2(x * d * scale, y * scale)
   end
 
-  local fill = active and C.cyanDim or C.panelRaised
+  local fill = active and C.cyanDim or backdrop
   local stroke = active and C.cyan or C.outline
 
   ui.pathClear()
@@ -139,7 +139,7 @@ local function drawSteering(center, origin, scale, state)
   centeredText(steeringLabel, 10 * scale, point(origin, scale, Layout.centerX, Layout.steeringY + 17), C.secondary)
 end
 
-local function drawPedalBar(origin, scale, x, label, value, color, labelColor)
+local function drawPedalBar(origin, scale, x, label, value, color, labelColor, inactiveColor)
   local y = Layout.pedalY
   local width = Layout.pedalWidth
   local height = Layout.pedalHeight
@@ -153,7 +153,7 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor)
     local segmentY = y * scale + (segmentCount - i) * (segmentHeight + gap)
     local topLeft = origin + vec2(x * scale, segmentY)
     local bottomRight = topLeft + vec2(width * scale, segmentHeight)
-    ui.drawRectFilled(topLeft, bottomRight, i <= filled and color or C.inactive)
+    ui.drawRectFilled(topLeft, bottomRight, i <= filled and color or inactiveColor)
   end
 
   local tl = point(origin, scale, x, y)
@@ -182,7 +182,7 @@ local function drawHeadlightIcon(center, scale, state)
   end
 end
 
-local function drawCell(origin, scale, x, label, value, active, valueColor, drawIcon)
+local function drawCell(origin, scale, x, label, value, active, valueColor, drawIcon, panel, panelRaised)
   local y = Layout.electronicsY
   local w = Layout.electronicsWidth
   local h = Layout.electronicsHeight
@@ -202,7 +202,7 @@ local function drawCell(origin, scale, x, label, value, active, valueColor, draw
   ui.pathLineTo(origin + vec2(left + chamfer, bottom))
   ui.pathLineTo(origin + vec2(left, bottom - chamfer))
   ui.pathLineTo(origin + vec2(left, top + chamfer))
-  ui.pathFillConvex(active and C.panelRaised or C.panel)
+  ui.pathFillConvex(active and panelRaised or panel)
 
   ui.pathClear()
   ui.pathLineTo(origin + vec2(left + chamfer, top))
@@ -278,34 +278,41 @@ function M.draw(state, settings)
   local designSize = Layout.baseSize * scale
   local origin = vec2((width - designSize) / 2, (height - designSize) / 2)
   local center = point(origin, scale, Layout.centerX, Layout.centerY)
+  local backdropOpacity = settings.backgroundOpacity or 0.54
+  local outerSurface = Theme.withAlpha(C.void, backdropOpacity * 0.82)
+  local innerSurface = Theme.withAlpha(C.surface, backdropOpacity)
+  local coreSurface = Theme.withAlpha(C.panel, math.min(0.92, backdropOpacity + 0.16))
+  local raisedSurface = Theme.withAlpha(C.panelRaised, math.min(0.94, backdropOpacity + 0.22))
+  local inactiveSurface = Theme.withAlpha(C.inactive, backdropOpacity * 0.8)
 
   ui.pushStyleVarAlpha(settings.opacity)
   ui.pushDWriteFont(Theme.fonts.utility)
 
-  ui.drawCircleFilled(center, Layout.outerRadius * scale, C.void, 96)
-  ui.drawCircleFilled(center, Layout.innerRadius * scale, C.surface, 96)
+  ui.drawCircleFilled(center, Layout.outerRadius * scale, outerSurface, 96)
+  ui.drawCircleFilled(center, Layout.innerRadius * scale, innerSurface, 96)
   ui.drawCircle(center, Layout.outerRadius * scale, C.outlineSoft, 96, 3 * scale)
   ui.drawCircle(center, (Layout.outerRadius - 8) * scale, C.outlineDim, 96, 2 * scale)
   ui.drawCircle(center, Layout.innerRadius * scale, C.outline, 96, 1.5 * scale)
 
   drawRpmArc(center, scale, state)
 
-  local leftArrow = U.polar(center, 242 * scale, math.rad(-140))
-  local rightArrow = U.polar(center, 242 * scale, math.rad(-40))
+  local leftArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-140))
+  local rightArrow = U.polar(center, Layout.turnIndicatorRadius * scale, math.rad(-40))
   local leftActive = state.hazardLights or state.leftIndicator and state.indicatorPhase ~= false
   local rightActive = state.hazardLights or state.rightIndicator and state.indicatorPhase ~= false
-  drawArrowBadge(leftArrow, -1, scale, leftActive == true)
-  drawArrowBadge(rightArrow, 1, scale, rightActive == true)
+  drawArrowBadge(leftArrow, -1, scale, leftActive == true, raisedSurface)
+  drawArrowBadge(rightArrow, 1, scale, rightActive == true, raisedSurface)
 
-  drawOctagon(center, 148 * scale, 155 * scale, 24 * scale, C.panel, C.cyanDim, 2 * scale)
+  drawOctagon(center, Layout.coreHalfWidth * scale, Layout.coreHalfHeight * scale,
+    Layout.coreChamfer * scale, coreSurface, C.cyanDim, 2 * scale)
   drawSteering(center, origin, scale, {
     showSteering = settings.showSteering,
     steeringInput = state.steeringInput,
     steeringAngle = state.steeringAngle
   })
 
-  drawPedalBar(origin, scale, Layout.brakeX, 'BRAKE', state.brake, C.red, C.primary)
-  drawPedalBar(origin, scale, Layout.throttleX, 'THROTTLE', state.throttle, C.cyan, C.primary)
+  drawPedalBar(origin, scale, Layout.brakeX, 'BRAKE', state.brake, C.red, C.primary, inactiveSurface)
+  drawPedalBar(origin, scale, Layout.throttleX, 'THROTTLE', state.throttle, C.cyan, C.primary, inactiveSurface)
 
   centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
   centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
@@ -318,18 +325,21 @@ function M.draw(state, settings)
   local cellX = Layout.electronicsX
   local tcValue = state.tcLevel and (settings.showTcAbsLevels and tostring(state.tcLevel) or 'ON') or '—'
   local absValue = state.absLevel and (settings.showTcAbsLevels and tostring(state.absLevel) or 'ON') or '—'
-  drawCell(origin, scale, cellX, 'TC', tcValue, state.tcActive == true, state.tcActive and C.amber or C.primary)
+  drawCell(origin, scale, cellX, 'TC', tcValue, state.tcActive == true, state.tcActive and C.amber or C.primary,
+    nil, coreSurface, raisedSurface)
   cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
-  drawCell(origin, scale, cellX, 'ABS', absValue, state.absActive == true, state.absActive and C.amber or C.primary)
+  drawCell(origin, scale, cellX, 'ABS', absValue, state.absActive == true, state.absActive and C.amber or C.primary,
+    nil, coreSurface, raisedSurface)
   cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
   local lightsShown = settings.showLights and state.lightsAvailable
   drawCell(origin, scale, cellX, 'LIGHTS', lightsShown and 'ON' or '—', lightsShown and state.headlights == true,
     state.highBeams and C.amber or C.cyan, lightsShown and function(centerPosition, iconScale)
       drawHeadlightIcon(centerPosition, iconScale, state)
-    end or nil)
+    end or nil, coreSurface, raisedSurface)
   cellX = cellX + Layout.electronicsWidth + Layout.electronicsGap
   local pitValue = state.pitLimiter ~= nil and (state.pitLimiter and 'ON' or '—') or (state.pitLane and 'P' or '—')
-  drawCell(origin, scale, cellX, 'PIT', pitValue, state.pitLimiter == true or state.pitLane, state.pitLimiter and C.amber or C.primary)
+  drawCell(origin, scale, cellX, 'PIT', pitValue, state.pitLimiter == true or state.pitLane,
+    state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
 
   drawWarning(origin, scale, state)
   drawScrews(center, scale)

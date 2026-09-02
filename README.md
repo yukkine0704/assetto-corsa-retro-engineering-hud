@@ -55,6 +55,12 @@ Suggested checks:
 4. Toggle lights and turn signals. The arrows stay embedded in the outer bezel and never occupy the upper center display.
 5. Tune geometry in `src/layout.lua` and palette/type in `src/theme.lua`.
 
+## Compact translucent presentation
+
+The default window is intentionally compact (`460 × 460`) so it can sit beside the driving view rather than dominate it. Its settings window exposes independent HUD scale, instrument opacity and a translucent frosted backdrop.
+
+CSP Lua apps can blend the dial with the running game, but the generic app API does not expose the already-rendered game frame for a safe true backdrop blur. The app therefore uses a real translucent, layered backdrop instead of rendering an expensive second scene that would not precisely match the active camera.
+
 ## Known limitations
 
 - No in-game capture environment was available to verify pixel placement against a live car; the geometry is intentionally centralized for screenshot-driven iteration.

@@ -26,4 +26,8 @@ Theme.fonts = {
   utility = 'Consolas;Weight=Regular'
 }
 
+function Theme.withAlpha(color, alpha)
+  return rgbm(color.r, color.g, color.b, alpha)
+end
+
 return Theme
