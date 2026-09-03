@@ -3,6 +3,7 @@ local Layout = require('src/layout')
 local U = require('src/utils')
 
 local M = {}
+local drawAnalogElectronics
 -- Updated at the start of each frame so every drawing helper uses the same
 -- selected palette, including the analog-only elements.
 local C = Theme.colors
@@ -14,6 +15,18 @@ end
 local function centeredText(text, size, center, color)
   local measured = ui.measureDWriteText(text, size)
   ui.dwriteDrawText(text, size, center - measured / 2, color)
+end
+
+local function centeredBacklitText(text, size, center, color, scale, backlit)
+  if backlit then
+    local glow = Theme.withAlpha(C.backlight, 0.26)
+    local spread = 1.35 * scale
+    centeredText(text, size, center + vec2(-spread, 0), glow)
+    centeredText(text, size, center + vec2(spread, 0), glow)
+    centeredText(text, size, center + vec2(0, -spread), glow)
+    centeredText(text, size, center + vec2(0, spread), glow)
+  end
+  centeredText(text, size, center, color)
 end
 
 local function drawArc(center, radius, startAngle, endAngle, color, width, segments)
@@ -128,7 +141,7 @@ local function rpmScaleColor(fraction, state, settings)
 end
 
 local function drawRpmScale(center, scale, state, settings, radius, tickInnerOffset,
-    tickOuterOffset, labelOffset, fontSize, tickWidth)
+    tickOuterOffset, labelOffset, fontSize, tickWidth, backlit)
   local maxRpm = rpmGaugeLimiter(state)
   local maxThousands = maxRpm / 1000
   local step = rpmScaleStep(maxRpm)
@@ -141,8 +154,8 @@ local function drawRpmScale(center, scale, state, settings, radius, tickInnerOff
     local tickOuter = U.polar(center, radius * scale - tickOuterOffset * scale, angle)
     drawLine(tickInner, tickOuter, rpmScaleColor(fraction, state, settings), tickWidth * scale)
     local labelPosition = U.polar(center, radius * scale - labelOffset * scale, angle)
-    centeredText(string.format('%.0f', value), fontSize * scale, labelPosition,
-      rpmScaleColor(fraction, state, settings))
+    centeredBacklitText(string.format('%.0f', value), fontSize * scale, labelPosition,
+      rpmScaleColor(fraction, state, settings), scale, backlit)
     value = value + step
   end
 end
@@ -197,7 +210,7 @@ local function drawRpmArc(center, scale, state, settings)
   drawRpmScale(center, scale, state, settings, Layout.rpmRadius, 18, 8, 38, 22, 2)
 end
 
-local function drawAnalogDial(center, scale, state, settings, surface)
+local function drawAnalogDial(center, scale, state, settings, surface, origin)
   local dialCenter = center + vec2(0, Layout.analogDialOffsetY * scale)
   local dialRadius = Layout.analogDialRadius * scale
   local tickRadius = Layout.analogTickRadius * scale
@@ -213,6 +226,7 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   ui.drawCircleFilled(dialCenter, dialRadius, surface, 96)
   ui.drawCircle(dialCenter, dialRadius, C.outlineSoft, 96, 1.7 * scale)
   drawArc(dialCenter, tickRadius, Layout.rpmStart, Layout.rpmEnd, C.outlineDim, 2 * scale, 72)
+  drawAnalogElectronics(origin, scale, state, settings, surface)
 
   for i = 0, tickCount do
     local fraction = i / tickCount
@@ -230,12 +244,35 @@ local function drawAnalogDial(center, scale, state, settings, surface)
     drawLine(inner, outer, color, (major and 2.6 or 1.4) * scale)
   end
 
-  drawRpmScale(dialCenter, scale, state, settings, Layout.analogTickRadius, 15, 0, 31, 22, 2.4)
+  local backlit = state.headlights == true
+  drawRpmScale(dialCenter, scale, state, settings, Layout.analogTickRadius, 15, 0, 31, 22, 2.4,
+    backlit)
+
+  local gearCenter = dialCenter + vec2(0, Layout.analogGearOffsetY * scale)
+  local gearColor = state.rpmRedline and redlineColor(state, settings)
+    or (state.rpmWarning and C.amber or C.primary)
+  -- Put the gear pod behind the needle so the needle remains continuous
+  -- across the pod instead of disappearing underneath it.
+  ui.drawCircleFilled(gearCenter, Layout.analogGearPodRadius * scale, C.panelRaised, 32)
+  ui.drawCircle(gearCenter, Layout.analogGearPodRadius * scale, C.outlineSoft, 32, 1.6 * scale)
+  ui.drawCircle(gearCenter, (Layout.analogGearPodRadius - 5) * scale, C.outlineDim, 32, 1 * scale)
 
   local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
   local needleTip = U.polar(dialCenter, Layout.analogNeedleLength * scale, needleAngle)
   local needleColor = state.rpmRedline and redlineColor(state, settings)
     or (state.rpmWarning and C.amber or C.primary)
+  if backlit then
+    local tipGlowRadius = Layout.analogNeedleBacklightTipRadius * scale
+    ui.drawCircleFilled(needleTip, tipGlowRadius, Theme.withAlpha(C.backlight, 0.16), 32)
+    drawArc(dialCenter, (Layout.analogNeedleLength + 3) * scale,
+      needleAngle - Layout.analogNeedleBacklightArcSpan / 2,
+      needleAngle + Layout.analogNeedleBacklightArcSpan / 2,
+      Theme.withAlpha(C.backlight, 0.42), 3.4 * scale, 16)
+    drawLine(dialCenter, needleTip, Theme.withAlpha(C.backlight, 0.14),
+      (Layout.analogNeedleGlowWidth + 8) * scale)
+    drawLine(dialCenter, needleTip, Theme.withAlpha(C.backlight, 0.30),
+      (Layout.analogNeedleHaloWidth + 4) * scale)
+  end
   drawLine(dialCenter, needleTip, Theme.withAlpha(needleColor, 0.12), Layout.analogNeedleGlowWidth * scale)
   drawLine(dialCenter, needleTip, Theme.withAlpha(needleColor, 0.32), Layout.analogNeedleHaloWidth * scale)
   drawLine(dialCenter, needleTip, C.outlineDim, (Layout.analogNeedleWidth + 5) * scale)
@@ -245,15 +282,10 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   ui.drawCircleFilled(dialCenter, 4 * scale,
     state.rpmRedline and redlineColor(state, settings) or (state.rpmWarning and C.amber or C.primary), 16)
 
-  local gearCenter = dialCenter + vec2(0, Layout.analogGearOffsetY * scale)
-  local gearColor = state.rpmRedline and redlineColor(state, settings)
-    or (state.rpmWarning and C.amber or C.primary)
-  ui.drawCircleFilled(gearCenter, Layout.analogGearPodRadius * scale, C.panelRaised, 32)
-  ui.drawCircle(gearCenter, Layout.analogGearPodRadius * scale, C.outlineSoft, 32, 1.6 * scale)
-  ui.drawCircle(gearCenter, (Layout.analogGearPodRadius - 5) * scale, C.outlineDim, 32, 1 * scale)
-  centeredText(state.gearText, Layout.analogGearFontSize * scale, gearCenter + vec2(0, 3 * scale), gearColor)
-  centeredText(state.speedText, Layout.analogSpeedFontSize * scale,
-    dialCenter + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary)
+  centeredBacklitText(state.gearText, Layout.analogGearFontSize * scale, gearCenter,
+    gearColor, scale, backlit)
+  centeredBacklitText(state.speedText, Layout.analogSpeedFontSize * scale,
+    dialCenter + vec2(0, Layout.analogSpeedOffsetY * scale), C.primary, scale, backlit)
 end
 
 local function drawAnalogAuxiliary(center, origin, scale, state, settings)
@@ -288,8 +320,117 @@ local function drawAnalogAuxiliary(center, origin, scale, state, settings)
       i <= filled and accent or C.inactive, Layout.analogAuxArcWidth * scale, 5)
   end
 
-  centeredText(label, 11 * scale, point(origin, scale, Layout.centerX - 66, Layout.analogAuxLabelY), C.secondary)
-  centeredText(value, 13 * scale, point(origin, scale, Layout.centerX + 52, Layout.analogAuxLabelY), accent)
+  local backlit = state.headlights == true
+  centeredBacklitText(label, 11 * scale,
+    point(origin, scale, Layout.centerX - 66, Layout.analogAuxLabelY), C.secondary, scale, backlit)
+  centeredBacklitText(value, 13 * scale,
+    point(origin, scale, Layout.centerX + 52, Layout.analogAuxLabelY), accent, scale, backlit)
+end
+
+local function flagColor(state)
+  local flag = state.raceFlagType
+  if type(flag) ~= 'number' or flag == 0 then return nil end
+
+  -- ac.FlagType values: Caution=2, Stop=5, ReturnToPits=8,
+  -- FasterCar=12, Finished=13 and OneLapLeft=14.
+  if flag == 2 then return C.flagYellow end
+  if flag == 5 or flag == 8 then return C.red end
+  if flag == 12 then return C.shiftBlue end
+  if flag == 13 or flag == 14 then return C.primary end
+  return nil
+end
+
+local function drawAnalogStatusIcon(center, scale, kind, color, backlit)
+  local iconColor = color
+
+  if kind == 'lights' then
+    ui.drawRectFilled(center + vec2(-7 * scale, -5 * scale),
+      center + vec2(-3 * scale, 5 * scale), iconColor)
+    for i = -1, 1 do
+      drawLine(center + vec2(-1 * scale, i * 4 * scale),
+        center + vec2(8 * scale, i * 5 * scale), iconColor, 1.2 * scale)
+    end
+  elseif kind == 'flag' then
+    drawLine(center + vec2(-6 * scale, -8 * scale),
+      center + vec2(-6 * scale, 8 * scale), iconColor, 1.4 * scale)
+    ui.pathClear()
+    ui.pathLineTo(center + vec2(-4 * scale, -7 * scale))
+    ui.pathLineTo(center + vec2(7 * scale, -4 * scale))
+    ui.pathLineTo(center + vec2(-4 * scale, 0))
+    ui.pathFillConvex(iconColor)
+  elseif kind == 'abs' then
+    centeredBacklitText('ABS', 7 * scale, center, iconColor, scale, backlit)
+  elseif kind == 'tc' then
+    centeredBacklitText('TC', 9 * scale, center, iconColor, scale, backlit)
+  else
+    centeredBacklitText('P', 11 * scale, center, iconColor, scale, backlit)
+  end
+end
+
+local function drawAnalogStatusPod(origin, scale, x, y, kind, available, active, accent, backlit)
+  local center = point(origin, scale, x, y)
+  local radius = Layout.analogStatusPodRadius * scale
+  local stroke = active and accent or (available and C.outlineSoft or C.outlineDim)
+  local fill = active and Theme.withAlpha(accent, 0.20) or C.panelRaised
+  local iconColor = active and accent or (available and C.secondary or C.outlineDim)
+
+  ui.drawCircleFilled(center, radius, fill, 32)
+  ui.drawCircle(center, radius, stroke, 32, (active and 2.1 or 1.4) * scale)
+  ui.drawCircle(center, (Layout.analogStatusPodRadius - 5) * scale, C.outlineDim, 32, 1 * scale)
+  if active then
+    ui.drawCircleFilled(center, (radius - 7 * scale), Theme.withAlpha(accent, 0.12), 28)
+  end
+  drawAnalogStatusIcon(center, scale, kind, iconColor, backlit)
+end
+
+local function drawAnalogFlagPod(origin, scale, state, dialSurface)
+  local center = point(origin, scale, Layout.analogFlagX, Layout.analogFlagY)
+  local color = flagColor(state)
+  local active = color ~= nil
+  local halfSize = Layout.analogFlagPodHalfSize * scale
+  local chamfer = Layout.analogFlagPodChamfer * scale
+  local glowSpread = Layout.analogFlagGlowSpread * scale
+
+  if active then
+    -- Layered chamfered squares make the flag light read as a focused glow
+    -- without putting it back onto the outer bezel.
+    drawOctagon(center, halfSize + glowSpread, halfSize + glowSpread,
+      chamfer + 2 * scale, Theme.withAlpha(color, 0.10),
+      Theme.withAlpha(color, 0.22), 2 * scale)
+    drawOctagon(center, halfSize + 4 * scale, halfSize + 4 * scale,
+      chamfer + scale, Theme.withAlpha(color, 0.18),
+      Theme.withAlpha(color, 0.54), 2.2 * scale)
+    drawOctagon(center, halfSize, halfSize, chamfer,
+      Theme.withAlpha(color, 0.78), color, 2.6 * scale)
+  else
+    drawOctagon(center, halfSize, halfSize, chamfer, dialSurface, C.outlineDim, 1.4 * scale)
+  end
+
+  drawAnalogStatusIcon(center, scale, 'flag', active and C.void or C.outlineDim, false)
+end
+
+drawAnalogElectronics = function(origin, scale, state, settings, dialSurface)
+  local backlit = state.headlights == true
+  local x = Layout.analogElectronicsX
+  local y = Layout.analogElectronicsFirstY
+  local spacingX = Layout.analogElectronicsSpacingX
+  local spacingY = Layout.analogElectronicsSpacingY
+  local lightsAvailable = settings.showLights ~= false and state.lightsAvailable
+  local lightsActive = lightsAvailable and state.headlights == true
+  local lightsColor = state.highBeams and C.amber or C.cyan
+
+  -- Analog mode keeps electronics compact and icon-only: no TC/ABS level numbers.
+  drawAnalogStatusPod(origin, scale, x, y, 'tc', state.tcSupported, state.tcActive == true,
+    C.amber, backlit)
+  drawAnalogStatusPod(origin, scale, x + spacingX, y, 'abs', state.absSupported, state.absActive == true,
+    C.amber, backlit)
+  drawAnalogStatusPod(origin, scale, x, y + spacingY, 'lights', lightsAvailable, lightsActive,
+    lightsColor, backlit)
+  drawAnalogStatusPod(origin, scale, x + spacingX, y + spacingY, 'pit',
+    state.pitLimiter ~= nil or state.pitLane,
+    state.pitLimiter == true or state.pitLane, C.amber, backlit)
+
+  drawAnalogFlagPod(origin, scale, state, dialSurface)
 end
 
 local function drawSpeedBrackets(origin, scale)
@@ -550,7 +691,7 @@ function M.draw(state, settings)
     Layout.turnIndicatorArcSpan, scale, rightActive == true, outerSurface)
 
   if analogMode then
-    drawAnalogDial(center, scale, state, settings, coreSurface)
+    drawAnalogDial(center, scale, state, settings, coreSurface, origin)
     local analogCenter = center + vec2(0, Layout.analogDialOffsetY * scale)
     drawRedlinePulse(analogCenter, (Layout.analogDialRadius - 8) * scale, scale, state, settings)
     drawAnalogAuxiliary(center, origin, scale, state, settings)

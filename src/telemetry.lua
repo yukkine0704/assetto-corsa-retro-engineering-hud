@@ -54,6 +54,7 @@ local function blankState()
     rightIndicator = nil,
     hazardLights = nil,
     indicatorPhase = nil,
+    raceFlagType = nil,
     pitLane = false,
     pitLimiter = nil
   }
@@ -109,6 +110,7 @@ end
 
 function M.update(state, dt, settings)
   state.clock = state.clock + math.max(dt or 0, 0)
+  state.raceFlagType = U.read(SIM, 'raceFlagType', nil)
 
   local car = ac.getCar(0)
   if not car then
