@@ -91,6 +91,70 @@ local function redlineColor(state, settings)
   return redlinePulseOn(state, settings) and C.red or C.amber
 end
 
+local function rpmScaleStep(maxRpm)
+  local maxThousands = maxRpm / 1000
+  if maxThousands <= 10 then return 1 end
+  if maxThousands <= 20 then return 2 end
+  return 5
+end
+
+local function rpmScaleLabel(value)
+  local rounded = math.floor(value * 10 + 0.5) / 10
+  if math.abs(rounded - math.floor(rounded + 0.5)) < 0.05 then
+    return string.format('%.0f', rounded)
+  end
+  return string.format('%.1f', rounded)
+end
+
+local function rpmScaleColor(fraction, state, settings)
+  if fraction >= state.rpmRedlineFraction then
+    return state.rpmRedline and redlineColor(state, settings) or C.red
+  end
+
+  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
+    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
+  if fraction >= shiftZoneStart then
+    local shiftLit = state.rpmWarning
+      and (settings == nil or settings.animateShiftAlert ~= false)
+      and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
+    return state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
+  end
+  return C.primary
+end
+
+local function drawRpmScale(center, scale, state, settings, radius, tickInnerOffset,
+    tickOuterOffset, labelOffset, fontSize, tickWidth)
+  local maxRpm = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  local maxThousands = maxRpm / 1000
+  local step = rpmScaleStep(maxRpm)
+  local value = 0
+
+  while value <= maxThousands + 0.001 do
+    local fraction = math.min(value / maxThousands, 1)
+    local angle = Layout.rpmStart + (Layout.rpmEnd - Layout.rpmStart) * fraction
+    local tickInner = U.polar(center, radius * scale - tickInnerOffset * scale, angle)
+    local tickOuter = U.polar(center, radius * scale - tickOuterOffset * scale, angle)
+    drawLine(tickInner, tickOuter, rpmScaleColor(fraction, state, settings), tickWidth * scale)
+    local labelPosition = U.polar(center, radius * scale - labelOffset * scale, angle)
+    centeredText(rpmScaleLabel(value), fontSize * scale, labelPosition,
+      rpmScaleColor(fraction, state, settings))
+    value = value + step
+  end
+
+  -- Keep a fractional limiter visible (for example, 7.5k) without adding a
+  -- duplicate label when the limit is already an even thousand.
+  if maxThousands - math.floor(maxThousands) >= 0.05 then
+    local fraction = 1
+    local angle = Layout.rpmEnd
+    local tickInner = U.polar(center, radius * scale - tickInnerOffset * scale, angle)
+    local tickOuter = U.polar(center, radius * scale - tickOuterOffset * scale, angle)
+    drawLine(tickInner, tickOuter, rpmScaleColor(fraction, state, settings), tickWidth * scale)
+    local labelPosition = U.polar(center, radius * scale - labelOffset * scale, angle)
+    centeredText(rpmScaleLabel(maxThousands), fontSize * scale, labelPosition,
+      rpmScaleColor(fraction, state, settings))
+  end
+end
+
 local function drawRedlinePulse(center, radius, scale, state, settings)
   if not state.rpmRedline then return end
   drawArc(center, radius, Layout.rpmStart, Layout.rpmEnd,
@@ -129,18 +193,9 @@ local function drawRpmArc(center, scale, state, settings)
     drawArc(center, Layout.rpmRadius * scale, a1, a2, color, Layout.rpmSegmentWidth * scale, 5)
   end
 
-  -- Major RPM index marks are intentionally sparse: peripheral readability
-  -- beats a dense speedometer-like number ring.
-  for i = 0, 9 do
-    local angle = Layout.rpmStart + (Layout.rpmEnd - Layout.rpmStart) * i / 9
-    local tickInner = U.polar(center, Layout.rpmRadius * scale - 18 * scale, angle)
-    local tickOuter = U.polar(center, Layout.rpmRadius * scale - 8 * scale, angle)
-    drawLine(tickInner, tickOuter,
-      i >= 8 and (state.rpmRedline and redlineColor(state, settings) or C.red) or C.outline, 2 * scale)
-    local labelPosition = U.polar(center, Layout.rpmRadius * scale - 38 * scale, angle)
-    centeredText(tostring(i), 22 * scale, labelPosition,
-      i >= 8 and (state.rpmRedline and redlineColor(state, settings) or C.primary) or C.secondary)
-  end
+  -- Major marks follow the same RPM limit as the filled arc, not a fixed 0–9
+  -- index that becomes incorrect on lower-revving cars.
+  drawRpmScale(center, scale, state, settings, Layout.rpmRadius, 18, 8, 38, 22, 2)
 end
 
 local function drawAnalogDial(center, scale, state, settings, surface)
@@ -162,7 +217,7 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   for i = 0, tickCount do
     local fraction = i / tickCount
     local angle = Layout.rpmStart + span * fraction
-    local major = i % 5 == 0
+    local major = false
     local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
     local color = C.secondary
     if fraction >= state.rpmRedlineFraction then
@@ -178,14 +233,7 @@ local function drawAnalogDial(center, scale, state, settings, surface)
     drawLine(inner, outer, color, (major and 2.6 or 1.4) * scale)
   end
 
-  for i = 0, 9 do
-    local angle = Layout.rpmStart + span * i / 9
-    local labelPosition = U.polar(dialCenter, tickRadius - 31 * scale, angle)
-    local fraction = i / 9
-    local color = fraction >= state.rpmRedlineFraction and (state.rpmRedline and redlineColor(state, settings) or C.red)
-      or (fraction >= shiftZoneStart and C.shiftBlueDim or C.primary)
-    centeredText(tostring(i), 22 * scale, labelPosition, color)
-  end
+  drawRpmScale(dialCenter, scale, state, settings, Layout.analogTickRadius, 15, 0, 31, 22, 2.4)
 
   local needleAngle = Layout.rpmStart + span * state.analogNeedleNormalized
   local needleTip = U.polar(dialCenter, Layout.analogNeedleLength * scale, needleAngle)
