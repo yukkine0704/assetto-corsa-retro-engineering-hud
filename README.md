@@ -21,7 +21,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 
 ## Install
 
-1. Download `RetroEngineeringHUD-v1.0.1.zip` from [Releases](../../releases).
+1. Download `RetroEngineeringHUD-v1.0.2.zip` from [Releases](../../releases).
 2. Drag the ZIP into Content Manager and accept the install prompt.
 3. Enable **Retro Engineering HUD** in the in-game Lua app sidebar.
 
