@@ -16,8 +16,10 @@ local function blankState()
     rpmText = '0000',
     rpmLimiter = nil,
     rpmDisplayLimiter = 8000,
+    rpmGaugeLimiter = 8000,
     rpmSource = 'fallback',
     rpmNormalized = 0,
+    rpmGaugeNormalized = 0,
     analogNeedleNormalized = 0,
     analogNeedleVelocity = 0,
     fuel = nil,
@@ -94,7 +96,7 @@ local function updateAnalogNeedle(state, dt)
   local step = U.clamp(dt or 0, 0, 0.05)
   if step <= 0 then return end
 
-  local acceleration = (state.rpmNormalized - state.analogNeedleNormalized) * Layout.analogNeedleSpring
+  local acceleration = (state.rpmGaugeNormalized - state.analogNeedleNormalized) * Layout.analogNeedleSpring
     - state.analogNeedleVelocity * Layout.analogNeedleDamping
   local velocity = U.clamp(state.analogNeedleVelocity + acceleration * step,
     -Layout.analogNeedleMaxVelocity, Layout.analogNeedleMaxVelocity)
@@ -132,7 +134,12 @@ function M.update(state, dt, settings)
     state.rpmDisplayLimiter = math.max(settings.fallbackRpm, 1000)
     state.rpmSource = 'fallback'
   end
+  -- Keep the car's exact limiter for alert thresholds, but round the visual
+  -- gauge up to the next whole thousand so a 7.5k engine gets a clean 8k
+  -- endpoint and the needle/arc can stop between 7 and 8.
+  state.rpmGaugeLimiter = math.max(math.ceil(state.rpmDisplayLimiter / 1000) * 1000, 1000)
   state.rpmNormalized = U.clamp(state.rpm / state.rpmDisplayLimiter, 0, 1)
+  state.rpmGaugeNormalized = U.clamp(state.rpm / state.rpmGaugeLimiter, 0, 1)
   state.rpmWarningFraction = settings.rpmWarningFraction
   state.rpmRedlineFraction = settings.rpmRedlineFraction
   state.rpmWarning = state.rpmNormalized >= settings.rpmWarningFraction

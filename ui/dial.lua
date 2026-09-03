@@ -98,21 +98,24 @@ local function rpmScaleStep(maxRpm)
   return 5
 end
 
-local function rpmScaleLabel(value)
-  local rounded = math.floor(value * 10 + 0.5) / 10
-  if math.abs(rounded - math.floor(rounded + 0.5)) < 0.05 then
-    return string.format('%.0f', rounded)
-  end
-  return string.format('%.1f', rounded)
+local function rpmGaugeLimiter(state)
+  local limiter = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  return math.max(state.rpmGaugeLimiter or math.ceil(limiter / 1000) * 1000, 1000)
+end
+
+local function rpmArcFraction(state, threshold)
+  local limiter = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  return U.clamp(limiter * (threshold or 1) / rpmGaugeLimiter(state), 0, 1)
 end
 
 local function rpmScaleColor(fraction, state, settings)
-  if fraction >= state.rpmRedlineFraction then
+  local redlineFraction = rpmArcFraction(state, state.rpmRedlineFraction)
+  if fraction >= redlineFraction then
     return state.rpmRedline and redlineColor(state, settings) or C.red
   end
 
-  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
-    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
+  local shiftZoneStart = math.max(0, math.min(rpmArcFraction(state, state.rpmWarningFraction),
+    redlineFraction - Layout.shiftZoneMinimumFraction))
   if fraction >= shiftZoneStart then
     local shiftLit = state.rpmWarning
       and (settings == nil or settings.animateShiftAlert ~= false)
@@ -124,7 +127,7 @@ end
 
 local function drawRpmScale(center, scale, state, settings, radius, tickInnerOffset,
     tickOuterOffset, labelOffset, fontSize, tickWidth)
-  local maxRpm = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  local maxRpm = rpmGaugeLimiter(state)
   local maxThousands = maxRpm / 1000
   local step = rpmScaleStep(maxRpm)
   local value = 0
@@ -136,41 +139,35 @@ local function drawRpmScale(center, scale, state, settings, radius, tickInnerOff
     local tickOuter = U.polar(center, radius * scale - tickOuterOffset * scale, angle)
     drawLine(tickInner, tickOuter, rpmScaleColor(fraction, state, settings), tickWidth * scale)
     local labelPosition = U.polar(center, radius * scale - labelOffset * scale, angle)
-    centeredText(rpmScaleLabel(value), fontSize * scale, labelPosition,
+    centeredText(string.format('%.0f', value), fontSize * scale, labelPosition,
       rpmScaleColor(fraction, state, settings))
     value = value + step
-  end
-
-  -- Keep a fractional limiter visible (for example, 7.5k) without adding a
-  -- duplicate label when the limit is already an even thousand.
-  if maxThousands - math.floor(maxThousands) >= 0.05 then
-    local fraction = 1
-    local angle = Layout.rpmEnd
-    local tickInner = U.polar(center, radius * scale - tickInnerOffset * scale, angle)
-    local tickOuter = U.polar(center, radius * scale - tickOuterOffset * scale, angle)
-    drawLine(tickInner, tickOuter, rpmScaleColor(fraction, state, settings), tickWidth * scale)
-    local labelPosition = U.polar(center, radius * scale - labelOffset * scale, angle)
-    centeredText(rpmScaleLabel(maxThousands), fontSize * scale, labelPosition,
-      rpmScaleColor(fraction, state, settings))
   end
 end
 
 local function drawRedlinePulse(center, radius, scale, state, settings)
   if not state.rpmRedline then return end
-  drawArc(center, radius, Layout.rpmStart, Layout.rpmEnd,
-    redlineColor(state, settings), 3 * scale, 72)
+  local startFraction = rpmArcFraction(state, state.rpmRedlineFraction)
+  local endFraction = U.clamp(state.rpmGaugeNormalized or state.rpmNormalized or 0, 0, 1)
+  if endFraction <= startFraction then return end
+  local span = Layout.rpmEnd - Layout.rpmStart
+  drawArc(center, radius,
+    Layout.rpmStart + span * startFraction,
+    Layout.rpmStart + span * endFraction,
+    redlineColor(state, settings), 3 * scale, 24)
 end
 
 local function drawRpmArc(center, scale, state, settings)
   local segmentCount = Layout.rpmSegments
   local span = (Layout.rpmEnd - Layout.rpmStart) / segmentCount
-  local filled = math.floor(state.rpmNormalized * segmentCount + 0.5)
+  local filled = math.floor((state.rpmGaugeNormalized or state.rpmNormalized) * segmentCount + 0.5)
 
   local shiftLit = state.rpmWarning
     and (settings == nil or settings.animateShiftAlert ~= false)
     and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
-  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
-    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
+  local redlineFraction = rpmArcFraction(state, state.rpmRedlineFraction)
+  local shiftZoneStart = math.max(0, math.min(rpmArcFraction(state, state.rpmWarningFraction),
+    redlineFraction - Layout.shiftZoneMinimumFraction))
 
   drawArc(center, Layout.rpmRadius * scale, Layout.rpmStart, Layout.rpmEnd,
     C.outlineDim, Layout.rpmTrackWidth * scale, 72)
@@ -179,10 +176,10 @@ local function drawRpmArc(center, scale, state, settings)
     local a1 = Layout.rpmStart + (i - 1) * span + 0.012
     local a2 = Layout.rpmStart + i * span - 0.012
     local fraction = i / segmentCount
-    local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
+    local inShiftZone = fraction >= shiftZoneStart and fraction < redlineFraction
     local color = C.inactive
     if i <= filled then
-      if fraction >= state.rpmRedlineFraction then
+      if fraction >= redlineFraction then
         color = state.rpmRedline and redlineColor(state, settings) or C.red
       elseif inShiftZone then
         color = state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
@@ -207,8 +204,9 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   local shiftLit = state.rpmWarning
     and (settings == nil or settings.animateShiftAlert ~= false)
     and math.floor(state.clock / Layout.shiftBlinkPeriod) % 2 == 0
-  local shiftZoneStart = math.max(0, math.min(state.rpmWarningFraction,
-    state.rpmRedlineFraction - Layout.shiftZoneMinimumFraction))
+  local redlineFraction = rpmArcFraction(state, state.rpmRedlineFraction)
+  local shiftZoneStart = math.max(0, math.min(rpmArcFraction(state, state.rpmWarningFraction),
+    redlineFraction - Layout.shiftZoneMinimumFraction))
 
   ui.drawCircleFilled(dialCenter, dialRadius, surface, 96)
   ui.drawCircle(dialCenter, dialRadius, C.outlineSoft, 96, 1.7 * scale)
@@ -217,17 +215,14 @@ local function drawAnalogDial(center, scale, state, settings, surface)
   for i = 0, tickCount do
     local fraction = i / tickCount
     local angle = Layout.rpmStart + span * fraction
-    local major = false
-    local inShiftZone = fraction >= shiftZoneStart and fraction < state.rpmRedlineFraction
+    local inShiftZone = fraction >= shiftZoneStart and fraction < redlineFraction
     local color = C.secondary
-    if fraction >= state.rpmRedlineFraction then
+    if fraction >= redlineFraction then
       color = state.rpmRedline and redlineColor(state, settings) or C.red
     elseif inShiftZone then
       color = state.rpmWarning and shiftLit and C.shiftBlue or C.shiftBlueDim
-    elseif major then
-      color = C.primary
     end
-    local length = (major and 15 or 7) * scale
+    local length = 7 * scale
     local outer = U.polar(dialCenter, tickRadius, angle)
     local inner = U.polar(dialCenter, tickRadius - length, angle)
     drawLine(inner, outer, color, (major and 2.6 or 1.4) * scale)
