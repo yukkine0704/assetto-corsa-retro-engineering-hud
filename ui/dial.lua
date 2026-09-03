@@ -3,6 +3,8 @@ local Layout = require('src/layout')
 local U = require('src/utils')
 
 local M = {}
+-- Updated at the start of each frame so every drawing helper uses the same
+-- selected palette, including the analog-only elements.
 local C = Theme.colors
 
 local function point(origin, scale, x, y)
@@ -503,6 +505,8 @@ local function drawDebug(origin, scale, state)
 end
 
 function M.draw(state, settings)
+  C = Theme.get(settings.theme)
+
   local width = ui.windowWidth()
   local height = ui.windowHeight()
   local fittedScale = math.min(width, height) / Layout.baseSize

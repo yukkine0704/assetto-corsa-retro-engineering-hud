@@ -9,6 +9,7 @@ M.values = ac.storage({
   backgroundOpacity = 0.72,
   speedUnit = 'km/h',
   instrumentMode = 'digital',
+  theme = 'dark',
   analogAuxiliaryMode = 'auto',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
@@ -30,6 +31,8 @@ if (M.values.layoutVersion or 1) < 3 then
   M.values.backgroundOpacity = math.max(M.values.backgroundOpacity or 0.72, 0.72)
   M.values.layoutVersion = 3
 end
+
+M.values.theme = M.values.theme == 'light' and 'light' or 'dark'
 
 -- A previous settings build could leave both RPM thresholds at 100%. That
 -- makes the shift band look permanently dim and prevents the core from ever
@@ -85,7 +88,12 @@ local function resetVisualSettings()
   M.values.hudScale = 0.72
   M.values.backgroundOpacity = 0.72
   M.values.opacity = 1.0
+  M.values.theme = 'dark'
   M.lastChange = 'Visual settings reset'
+end
+
+local function themeLabel()
+  return M.values.theme == 'light' and 'Light' or 'Dark'
 end
 
 local function nextAnalogAuxiliaryMode()
@@ -111,6 +119,11 @@ function M.draw()
 
   if ui.button('Reset visual settings') then
     resetVisualSettings()
+  end
+
+  if ui.button('Theme: ' .. themeLabel()) then
+    M.values.theme = M.values.theme == 'light' and 'dark' or 'light'
+    M.lastChange = 'Theme'
   end
 
   if ui.button('Speed unit: ' .. M.values.speedUnit) then

@@ -11,6 +11,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 - Embedded, blinking bezel indicators.
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.
+- Light and dark dial themes.
 - Persistent visual, RPM and display settings.
 
 ## Requirements
@@ -27,7 +28,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 
 For a manual install, extract the archive into the Assetto Corsa root. It contains `apps/lua/RetroEngineeringHUD/`.
 
-Use the app settings window to switch between the digital and analog layouts, set the RPM thresholds, and tune scale and transparency.
+Use the app settings window to switch between the digital and analog layouts, choose the light or dark theme, set the RPM thresholds, and tune scale and transparency.
 
 ## License
 
