@@ -1,5 +1,7 @@
 # Retro Engineering HUD
 
+The HUD broadcasts its selected theme and opacity settings to compatible CSP Lua apps once per second, allowing companion instruments to stay visually synchronized.
+
 A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shaders Patch Lua app.
 
 ![Retro Engineering HUD in Assetto Corsa](assets/retro-engineering-hud.png)
