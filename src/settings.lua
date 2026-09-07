@@ -19,6 +19,7 @@ M.values = ac.storage({
   showTcAbsLevels = true,
   showSteering = true,
   animateIndicators = true,
+  animateFlagAlert = true,
   animateShiftAlert = true,
   animateRedlineAlert = true,
   debug = false
@@ -155,6 +156,7 @@ function M.draw()
   checkbox('Show lights', 'showLights')
   checkbox('Show TC / ABS levels', 'showTcAbsLevels')
   checkbox('Blink turn indicators', 'animateIndicators')
+  checkbox('Blink race flag alert', 'animateFlagAlert')
   checkbox('Blink shift zone', 'animateShiftAlert')
   checkbox('Blink redline alert', 'animateRedlineAlert')
   checkbox('Developer debug view', 'debug')

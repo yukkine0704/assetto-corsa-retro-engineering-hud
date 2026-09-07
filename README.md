@@ -10,6 +10,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 
 - Digital and analog instrument modes.
 - Central speed/gear readout, RPM arc, redline and shift alerts.
+- Digital race-flag alerts that share the active flag color and blink.
 - Embedded, blinking bezel indicators.
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.
@@ -24,7 +25,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 
 ## Install
 
-1. Download `RetroEngineeringHUD-v1.0.2.zip` from [Releases](../../releases).
+1. Download `RetroEngineeringHUD-v1.0.3.zip` from [Releases](../../releases).
 2. Drag the ZIP into Content Manager and accept the install prompt.
 3. Enable **Retro Engineering HUD** in the in-game Lua app sidebar.
 

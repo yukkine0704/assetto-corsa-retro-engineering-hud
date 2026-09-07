@@ -18,7 +18,7 @@ return {
   rpmEnd = math.rad(30),
 
   bezelCutRadius = 276,
-  bezelCutWidth = 14,
+  bezelCutWidth = 22,
   -- Turn indicators sit in the lower half of the side bezel and use a longer
   -- curved cut, making them readable without competing with the RPM arc.
   turnIndicatorAngle = math.rad(10),
@@ -28,6 +28,7 @@ return {
   shiftBlinkPeriod = 0.14,
   redlineBlinkPeriod = 0.12,
   shiftZoneMinimumFraction = 0.14,
+  digitalRpmAlertStartFraction = 0.70,
 
   analogDialOffsetY = 0,
   analogDialRadius = 258,

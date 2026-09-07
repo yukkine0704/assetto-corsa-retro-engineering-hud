@@ -71,13 +71,18 @@ local function drawBezelArcCut(center, radius, angle, span, scale, active, backd
   local halfWidth = Layout.bezelCutWidth * scale / 2
   local startAngle = angle - span / 2
   local endAngle = angle + span / 2
-  local fill = active and (activeFill or C.amberDim) or backdrop
-  local stroke = active and (activeStroke or C.amber) or C.outlineDim
+  local activeColor = activeStroke or C.amber
+  local fill = active and (activeFill or Theme.withAlpha(activeColor, 0.92)) or backdrop
+  local stroke = active and activeColor or C.outlineDim
 
+  if active then
+    drawArc(center, radius, startAngle, endAngle, Theme.withAlpha(activeColor, 0.22),
+      (Layout.bezelCutWidth + 10) * scale, 10)
+  end
   drawArc(center, radius, startAngle, endAngle, fill, Layout.bezelCutWidth * scale, 10)
   drawArc(center, radius - halfWidth, startAngle, endAngle, C.outlineDim, 1.2 * scale, 10)
   drawArc(center, radius + halfWidth, startAngle, endAngle, C.outlineDim, 1.2 * scale, 10)
-  drawArc(center, radius, startAngle, endAngle, stroke, 2.2 * scale, 10)
+  drawArc(center, radius, startAngle, endAngle, stroke, 2.4 * scale, 10)
 end
 
 local function indicatorLit(state, animationEnabled)
@@ -340,6 +345,49 @@ local function flagColor(state)
   return nil
 end
 
+local function flagBlinkOn(state, settings)
+  if settings == nil or settings.animateFlagAlert ~= false then
+    return math.floor(state.clock / Layout.indicatorBlinkPeriod) % 2 == 0
+  end
+  return true
+end
+
+local function digitalRpmBezelFraction(state)
+  return U.clamp(state.rpmNormalized or 0, 0, 1)
+end
+
+local function digitalRpmBezelColor(state)
+  local fraction = digitalRpmBezelFraction(state)
+  local warningFraction = state.rpmWarningFraction or 0.86
+  local redlineFraction = state.rpmRedlineFraction or 0.96
+
+  if fraction >= redlineFraction then return C.red end
+  if fraction >= warningFraction then return C.shiftBlue end
+  return C.flagYellow
+end
+
+local function digitalRpmBezelActive(state)
+  return state.available == true
+    and digitalRpmBezelFraction(state) >= Layout.digitalRpmAlertStartFraction
+end
+
+local function digitalRpmBezelLit(state, settings)
+  if not digitalRpmBezelActive(state) then return false end
+
+  local fraction = digitalRpmBezelFraction(state)
+  local warningFraction = state.rpmWarningFraction or 0.86
+  local redlineFraction = state.rpmRedlineFraction or 0.96
+  if fraction >= redlineFraction then
+    return redlinePulseOn(state, settings)
+  end
+  if fraction >= warningFraction then
+    if settings == nil or settings.animateShiftAlert ~= false then
+      return math.floor(state.clock / Layout.indicatorBlinkPeriod) % 2 == 0
+    end
+  end
+  return true
+end
+
 local function drawAnalogStatusIcon(center, scale, kind, color, backlit)
   local iconColor = color
 
@@ -463,7 +511,8 @@ local function drawSteering(center, origin, scale, state)
   centeredText(steeringLabel, 9 * scale, point(origin, scale, Layout.centerX, Layout.steeringY + 15), C.secondary)
 end
 
-local function drawPedalBar(origin, scale, x, label, value, color, labelColor, inactiveColor, panelColor)
+local function drawPedalBar(origin, scale, x, label, value, color, labelColor, inactiveColor,
+    panelColor, alertColor, alertLit)
   local y = Layout.pedalY
   local width = Layout.pedalWidth
   local height = Layout.pedalHeight
@@ -477,6 +526,9 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   local housingTop = (y - 38) * scale
   local housingBottom = (y + height + 17) * scale
   local chamfer = 10 * scale
+  local housingAlertActive = alertColor ~= nil and alertLit == true
+  local housingFill = housingAlertActive and Theme.withAlpha(alertColor, 0.18) or panelColor
+  local housingStroke = housingAlertActive and alertColor or C.outlineSoft
 
   ui.pathClear()
   ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingTop))
@@ -487,7 +539,7 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingBottom))
   ui.pathLineTo(origin + vec2(housingLeft, housingBottom - chamfer))
   ui.pathLineTo(origin + vec2(housingLeft, housingTop + chamfer))
-  ui.pathFillConvex(panelColor)
+  ui.pathFillConvex(housingFill)
 
   ui.pathClear()
   ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingTop))
@@ -498,7 +550,10 @@ local function drawPedalBar(origin, scale, x, label, value, color, labelColor, i
   ui.pathLineTo(origin + vec2(housingLeft + chamfer, housingBottom))
   ui.pathLineTo(origin + vec2(housingLeft, housingBottom - chamfer))
   ui.pathLineTo(origin + vec2(housingLeft, housingTop + chamfer))
-  ui.pathStroke(C.outlineSoft, true, 1.4 * scale)
+  if housingAlertActive then
+    ui.pathStroke(Theme.withAlpha(alertColor, 0.24), true, 5 * scale)
+  end
+  ui.pathStroke(housingStroke, true, (housingAlertActive and 2.3 or 1.4) * scale)
 
   if label then
     centeredText(label, 12 * scale, point(origin, scale, x + width / 2, y - 16), labelColor)
@@ -612,6 +667,14 @@ local function drawWarningBezelCut(center, scale, state, settings, backdrop)
     Layout.warningArcSpan, scale, active, backdrop, warningFill, warningStroke)
 end
 
+local function drawDigitalRpmBezelCut(center, scale, state, settings, backdrop)
+  local active = digitalRpmBezelLit(state, settings)
+  local color = digitalRpmBezelColor(state)
+  local fill = Theme.withAlpha(color, 0.92)
+  drawBezelArcCut(center, Layout.bezelCutRadius * scale, math.pi / 2,
+    Layout.turnIndicatorArcSpan, scale, active, backdrop, fill, color)
+end
+
 local function drawScrews(center, scale)
   local left = U.polar(center, 240 * scale, math.rad(143))
   local right = U.polar(center, 240 * scale, math.rad(37))
@@ -715,10 +778,13 @@ function M.draw(state, settings)
       steeringAngle = state.steeringAngle
     })
 
+    local digitalFlagColor = flagColor(state)
+    local digitalFlagLit = digitalFlagColor and flagBlinkOn(state, settings)
+    local pedalPanel = Theme.withAlpha(C.panel, backdropOpacity * 0.62)
     drawPedalBar(origin, scale, Layout.brakeX, nil, state.brake, C.red, C.primary,
-      inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
+      inactiveSurface, pedalPanel, digitalFlagColor, digitalFlagLit)
     drawPedalBar(origin, scale, Layout.throttleX, nil, state.throttle, C.cyan, C.primary,
-      inactiveSurface, Theme.withAlpha(C.panel, backdropOpacity * 0.62))
+      inactiveSurface, pedalPanel, digitalFlagColor, digitalFlagLit)
 
     centeredText(state.speedText, 42 * scale, point(origin, scale, Layout.centerX, Layout.speedY), C.primary)
     centeredText(state.speedUnit, 14 * scale, point(origin, scale, Layout.centerX, Layout.speedUnitY), C.secondary)
@@ -726,8 +792,15 @@ function M.draw(state, settings)
     local digitalAlertColor = state.rpmRedline and redlineColor(state, settings)
       or (state.rpmWarning and C.amber or C.primary)
     centeredText(state.gearText, Layout.gearFontSize * scale, point(origin, scale, Layout.centerX, Layout.gearY), digitalAlertColor)
+    local digitalRpmColor = state.rpmRedline and digitalAlertColor
+      or (state.rpmWarning and C.amber or C.primary)
+    local digitalFlagColor = flagColor(state)
+    if digitalFlagColor then
+      digitalRpmColor = flagBlinkOn(state, settings)
+        and digitalFlagColor or Theme.withAlpha(digitalFlagColor, 0.22)
+    end
     centeredText(state.rpmText, 39 * scale, point(origin, scale, Layout.centerX, Layout.rpmY),
-      state.rpmRedline and digitalAlertColor or (state.rpmWarning and C.amber or C.primary))
+      digitalRpmColor)
     centeredText('RPM', 13 * scale, point(origin, scale, Layout.centerX, Layout.rpmLabelY), C.secondary)
 
     drawElectronicsShelf(origin, scale, Theme.withAlpha(C.panelRaised, backdropOpacity * 0.72))
@@ -754,7 +827,11 @@ function M.draw(state, settings)
       state.pitLimiter and C.amber or C.primary, nil, coreSurface, raisedSurface)
   end
 
-  drawWarningBezelCut(center, scale, state, settings, outerSurface)
+  if analogMode then
+    drawWarningBezelCut(center, scale, state, settings, outerSurface)
+  else
+    drawDigitalRpmBezelCut(center, scale, state, settings, outerSurface)
+  end
   drawScrews(center, scale)
 
   if settings.debug then drawDebug(origin, scale, state) end
