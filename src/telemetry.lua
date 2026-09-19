@@ -1,5 +1,6 @@
 local U = require('src/utils')
 local Layout = require('src/layout')
+local Gt7Layout = require('src/gt7_retro_layout')
 
 local M = {}
 local SIM = ac.getSim()
@@ -47,6 +48,8 @@ local function blankState()
     ffbSigned = 0,
     ffbMagnitudeRaw = 0,
     ffbMagnitude = 0,
+    ffbNeedle = 0,
+    ffbNeedleVelocity = 0,
     ffbPercent = 0,
     ffbClipping = false,
     ffbClipHold = 0,
@@ -126,6 +129,8 @@ local function updateFfb(state, car, dt)
     state.ffbSigned = 0
     state.ffbMagnitudeRaw = 0
     state.ffbMagnitude = 0
+    state.ffbNeedle = 0
+    state.ffbNeedleVelocity = 0
     state.ffbPercent = 0
     state.ffbClipping = false
     state.ffbClipHold = 0
@@ -142,6 +147,20 @@ local function updateFfb(state, car, dt)
   local alpha = step > 0 and (1 - math.exp(-step / timeConstant)) or 1
   state.ffbMagnitude = state.ffbMagnitude + (target - state.ffbMagnitude) * alpha
   state.ffbPercent = U.round(U.clamp(state.ffbMagnitude, 0, 1) * 100)
+
+  -- A spring-driven needle gives the lower gauge visible mechanical mass.
+  -- It follows the real absolute ffbFinal value; clipping remains tied to the
+  -- unsmoothed source below so the warning never inherits the needle delay.
+  if step > 0 then
+    local acceleration = (target - state.ffbNeedle) * Gt7Layout.ffbNeedleSpring
+      - state.ffbNeedleVelocity * Gt7Layout.ffbNeedleDamping
+    local velocity = U.clamp(state.ffbNeedleVelocity + acceleration * step,
+      -Gt7Layout.ffbNeedleMaxVelocity, Gt7Layout.ffbNeedleMaxVelocity)
+    local position = U.clamp(state.ffbNeedle + velocity * step, 0, 1)
+    if (position == 0 and velocity < 0) or (position == 1 and velocity > 0) then velocity = 0 end
+    state.ffbNeedle = position
+    state.ffbNeedleVelocity = velocity
+  end
 
   if state.ffbMagnitudeRaw >= 0.98 then
     state.ffbClipHold = 0.18
@@ -162,6 +181,8 @@ function M.update(state, dt, settings)
     state.ffbSigned = 0
     state.ffbMagnitudeRaw = 0
     state.ffbMagnitude = 0
+    state.ffbNeedle = 0
+    state.ffbNeedleVelocity = 0
     state.ffbPercent = 0
     state.ffbClipping = false
     state.ffbClipHold = 0

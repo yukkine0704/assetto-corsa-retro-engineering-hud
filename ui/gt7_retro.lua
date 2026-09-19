@@ -72,6 +72,25 @@ local function indicatorLit(state, settings)
   return math.floor(state.clock / Layout.indicatorPeriod) % 2 == 0
 end
 
+local function flagColor(state)
+  local flag = state.raceFlagType
+  if type(flag) ~= 'number' or flag == 0 then return nil end
+
+  -- Match the established digital-mode mapping of CSP flag values.
+  if flag == 2 then return C.flagYellow end
+  if flag == 5 or flag == 8 then return C.red end
+  if flag == 12 then return C.shiftBlue end
+  if flag == 13 or flag == 14 then return C.primary end
+  return nil
+end
+
+local function flagBlinkOn(state, settings)
+  if settings == nil or settings.animateFlagAlert ~= false then
+    return math.floor(state.clock / Layout.flagBlinkPeriod) % 2 == 0
+  end
+  return true
+end
+
 local function rpmColor(fraction, active, state, settings)
   local warning = state.rpmWarningFraction or 0.86
   local redline = state.rpmRedlineFraction or 0.96
@@ -264,17 +283,10 @@ local function drawRpmDial(origin, scale, state, settings, backdropOpacity)
   drawBoostGauge(origin, scale, state)
 end
 
-local function drawWheelIcon(center, scale, color)
-  ui.drawCircle(center, 18 * scale, color, 28, 3 * scale)
-  ui.drawCircleFilled(center, 4 * scale, color, 16)
-  drawLine(center, center + vec2(0, -17 * scale), color, 3 * scale)
-  drawLine(center, center + vec2(-15 * scale, 9 * scale), color, 3 * scale)
-  drawLine(center, center + vec2(15 * scale, 9 * scale), color, 3 * scale)
-end
-
 local function drawFfb(origin, scale, state)
   local center = point(origin, scale, Layout.ffbCenterX, Layout.ffbCenterY)
-  local filled = state.ffbAvailable and math.floor(U.clamp(state.ffbMagnitude or 0, 0, 1) * Layout.ffbSegments + 0.5) or 0
+  local fraction = state.ffbAvailable and U.clamp(state.ffbNeedle or 0, 0, 1) or 0
+  local filled = math.floor(fraction * Layout.ffbSegments + 0.5)
   local span = (Layout.ffbEnd - Layout.ffbStart) / Layout.ffbSegments
   for i = 1, Layout.ffbSegments do
     local a1 = Layout.ffbStart + (i - 1) * span + 0.014
@@ -291,16 +303,51 @@ local function drawFfb(origin, scale, state)
       a1, a2, color, 12 * scale, 5)
   end
 
-  local valueColor = state.ffbClipping and C.red or C.primary
-  drawWheelIcon(center + vec2(0, -50 * scale), scale, state.ffbClipping and C.red or C.primary)
-  centeredText('FFB', 22 * scale, center + vec2(0, -10 * scale), C.secondary)
-  centeredText(state.ffbAvailable and string.format('%d%%', state.ffbPercent or 0) or '--%',
-    50 * scale, center + vec2(0, 35 * scale), valueColor)
-  if state.ffbClipping then
-    centeredText('SAT', 11 * scale, center + vec2(0, 72 * scale), C.red)
-  elseif not state.ffbAvailable then
-    centeredText('NO PHYSICS', 9 * scale, center + vec2(0, 72 * scale), C.secondary)
+  local angle = Layout.ffbStart + (Layout.ffbEnd - Layout.ffbStart) * fraction
+  local pivot = center + vec2(0, Layout.ffbNeedlePivotOffsetY * scale)
+  local tip = ellipsePoint(center, (Layout.ffbRadiusX - 8) * scale,
+    (Layout.ffbRadiusY - 8) * scale, angle)
+  local needleColor = not state.ffbAvailable and C.outlineSoft
+    or (state.ffbClipping and C.red or (fraction >= 0.9 and C.amber or C.primary))
+  drawLine(pivot, tip, withAlpha(C.backlight, 0.16), 10 * scale)
+  drawLine(pivot, tip, C.outlineDim, 6 * scale)
+  drawLine(pivot, tip, needleColor, 3 * scale)
+  ui.drawCircleFilled(pivot, 10 * scale, C.panelRaised, 20)
+  ui.drawCircle(pivot, 10 * scale, C.outlineSoft, 20, 2 * scale)
+  ui.drawCircleFilled(pivot, 3.5 * scale, needleColor, 16)
+end
+
+local function drawPedalBar(origin, scale, x, value, activeColor)
+  local segmentCount = Layout.pedalSegments
+  local gap = Layout.pedalGap * scale
+  local segmentHeight = (Layout.pedalHeight * scale - gap * (segmentCount - 1)) / segmentCount
+  local filled = math.floor(U.clamp(value or 0, 0, 1) * segmentCount + 0.5)
+
+  for i = 1, segmentCount do
+    local y = Layout.pedalTop * scale + (segmentCount - i) * (segmentHeight + gap)
+    local topLeft = origin + vec2(x * scale, y)
+    ui.drawRectFilled(topLeft, topLeft + vec2(Layout.pedalWidth * scale, segmentHeight),
+      i <= filled and activeColor or C.inactive)
   end
+end
+
+local function drawFlagLamps(origin, scale, x, state, settings)
+  local color = flagColor(state)
+  local lit = color ~= nil and flagBlinkOn(state, settings)
+  local lampColor = lit and color or C.inactive
+  local centerX = x + Layout.pedalWidth / 2
+  for offset = -1, 1, 2 do
+    local center = point(origin, scale, centerX + offset * Layout.flagLampSpacing / 2, Layout.flagLampY)
+    if lit then ui.drawCircleFilled(center, 8 * scale, withAlpha(color, 0.16), 18) end
+    ui.drawCircleFilled(center, Layout.flagLampRadius * scale, lampColor, 18)
+  end
+end
+
+local function drawPedalsAndFlagLights(origin, scale, state, settings)
+  drawPedalBar(origin, scale, Layout.brakeX, state.brake, C.red)
+  drawPedalBar(origin, scale, Layout.throttleX, state.throttle, C.cyan)
+  drawFlagLamps(origin, scale, Layout.brakeX, state, settings)
+  drawFlagLamps(origin, scale, Layout.throttleX, state, settings)
 end
 
 local function drawBrakeIcon(center, scale, color)
@@ -395,6 +442,7 @@ function M.draw(state, settings)
   drawCenterReadout(origin, scale, state, settings)
   drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   drawRpmDial(origin, scale, state, settings, backdropOpacity)
+  drawPedalsAndFlagLights(origin, scale, state, settings)
   drawFfb(origin, scale, state)
   drawStatusStrips(origin, scale, state, settings, backdropOpacity)
   if settings.debug then drawDebug(origin, scale, state, width, height) end

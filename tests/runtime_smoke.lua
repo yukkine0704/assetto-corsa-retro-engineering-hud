@@ -131,15 +131,24 @@ car = makeCar({ ffbFinal = 0.62 })
 for _ = 1, 30 do Telemetry.update(telemetry, 1 / 60, Settings.values) end
 assert(telemetry.ffbAvailable and telemetry.ffbPercent >= 60 and telemetry.ffbPercent <= 63,
   'FFB must use and smooth ffbFinal magnitude')
+assert(telemetry.ffbNeedle > 0.55 and telemetry.ffbNeedle < 0.70,
+  'FFB needle must settle near the live magnitude')
 
 car.ffbFinal = -1.03
 Telemetry.update(telemetry, 1 / 60, Settings.values)
 assert(telemetry.ffbClipping, 'absolute FFB saturation must trigger clipping')
+assert(telemetry.ffbNeedle < 0.9,
+  'FFB needle must preserve mechanical inertia during a sudden saturation spike')
+for _ = 1, 45 do Telemetry.update(telemetry, 1 / 60, Settings.values) end
+assert(telemetry.ffbNeedle > 0.95,
+  'FFB needle must reach sustained high load after its inertial sweep')
 
 car.physicsAvailable = false
 Telemetry.update(telemetry, 1 / 60, Settings.values)
 assert(not telemetry.ffbAvailable and telemetry.ffbPercent == 0,
   'missing physics must use explicit FFB fallback')
+assert(telemetry.ffbNeedle == 0 and telemetry.ffbNeedleVelocity == 0,
+  'missing physics must park the FFB needle')
 
 local scenarios = {
   { mode = 'digital', width = 460, height = 460, car = makeCar({ gear = 0, rpm = 2000 }), unit = 'km/h' },
@@ -150,7 +159,7 @@ local scenarios = {
     turboCount = 1, turboBoost = 1.2, rpm = 7800, ffbFinal = 1.03,
     turningLeftLights = true, handbrake = 1, headlightsActive = true,
     engineLifeLeft = 600, absInAction = true
-  }), unit = 'km/h', scale = 0.72 }
+  }), unit = 'km/h', scale = 0.72, flag = 2 }
 }
 
 for _, scenario in ipairs(scenarios) do
@@ -158,6 +167,7 @@ for _, scenario in ipairs(scenarios) do
   Settings.values.speedUnit = scenario.unit
   Settings.values.hudScale = scenario.scale or 0.72
   Settings.values.theme = scenario.width > 1000 and 'light' or 'dark'
+  sim.raceFlagType = scenario.flag
   windowWidth, windowHeight, car = scenario.width, scenario.height, scenario.car
   script.update(1 / 60)
   script.windowMain()

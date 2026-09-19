@@ -33,8 +33,24 @@ return {
   ffbStart = math.rad(195),
   ffbEnd = math.rad(345),
   ffbSegments = 20,
+  ffbNeedlePivotOffsetY = 32,
+  ffbNeedleSpring = 70,
+  ffbNeedleDamping = 12.5,
+  ffbNeedleMaxVelocity = 2.6,
+
+  pedalTop = 188,
+  pedalHeight = 140,
+  pedalWidth = 16,
+  pedalSegments = 12,
+  pedalGap = 3,
+  brakeX = 402,
+  throttleX = 1022,
+  flagLampY = 166,
+  flagLampSpacing = 12,
+  flagLampRadius = 4.5,
 
   indicatorPeriod = 0.42,
+  flagBlinkPeriod = 0.42,
   shiftBlinkPeriod = 0.14,
   redlineBlinkPeriod = 0.12
 }
