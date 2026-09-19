@@ -35,6 +35,9 @@ return {
   rpmNeedleSpring = DialLayout.analogNeedleSpring,
   rpmNeedleDamping = DialLayout.analogNeedleDamping,
   rpmNeedleMaxVelocity = DialLayout.analogNeedleMaxVelocity,
+  boostNeedleSpring = 72,
+  boostNeedleDamping = 13.5,
+  boostNeedleMaxVelocity = 2.8,
 
   ffbCenterX = 720,
   ffbCenterY = 408,

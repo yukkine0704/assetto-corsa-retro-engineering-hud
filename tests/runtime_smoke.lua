@@ -183,6 +183,19 @@ assert(not telemetry.ffbAvailable and telemetry.ffbPercent == 0,
 assert(telemetry.ffbNeedle == 0 and telemetry.ffbNeedleVelocity == 0,
   'missing physics must park the FFB needle')
 
+local boostTelemetry = Telemetry.new()
+car = makeCar({ turboCount = 1, turboBoost = 1.2 })
+Telemetry.update(boostTelemetry, 1 / 60, Settings.values)
+assert(boostTelemetry.boostNeedleNormalized > 0 and boostTelemetry.boostNeedleNormalized < 0.8,
+  'boost needle must preserve inertia on a sudden pressure increase')
+for _ = 1, 60 do Telemetry.update(boostTelemetry, 1 / 60, Settings.values) end
+assert(boostTelemetry.boostNeedleNormalized > 0.75 and boostTelemetry.boostNeedleNormalized <= 0.81,
+  'boost needle must settle at the normalized pressure')
+car.turboCount = 0
+Telemetry.update(boostTelemetry, 1 / 60, Settings.values)
+assert(boostTelemetry.boostNeedleNormalized == 0 and boostTelemetry.boostNeedleVelocity == 0,
+  'naturally aspirated cars must park the hidden boost needle')
+
 local scenarios = {
   { mode = 'digital', width = 460, height = 460, car = makeCar({ gear = 0, rpm = 2000 }), unit = 'km/h' },
   { mode = 'analog', width = 740, height = 420, car = makeCar({ gear = -1, rpm = 7000 }), unit = 'mph' },

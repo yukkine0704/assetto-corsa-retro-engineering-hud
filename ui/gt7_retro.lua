@@ -177,7 +177,18 @@ local function drawNeedle(center, scale, fraction, color)
   ui.drawCircleFilled(center, 4 * scale, color, 16)
 end
 
-local function drawDialTicks(center, scale, labelValues, formatter, activeFraction, state, settings, rpmDial)
+local function drawDigitalIndicator(center, scale, fraction, color)
+  local angle = gaugeAngle(fraction)
+  local inner = U.polar(center, (Layout.tickRadius - 27) * scale, angle)
+  local outer = U.polar(center, (Layout.tickRadius + 1) * scale, angle)
+  drawLine(inner, outer, withAlpha(color, 0.20), 9 * scale)
+  drawLine(inner, outer, color, 4 * scale)
+  drawArc(center, (Layout.tickRadius - 4) * scale, angle - 0.022, angle + 0.022,
+    color, 7 * scale, 5)
+end
+
+local function drawDialTicks(center, scale, labelValues, formatter, activeFraction, state, settings,
+    rpmDial, needleMode)
   local minorCount = 40
   for i = 0, minorCount do
     local fraction = i / minorCount
@@ -197,8 +208,12 @@ local function drawDialTicks(center, scale, labelValues, formatter, activeFracti
   end
 
   local needleColor = rpmDial and (state.rpmRedline and C.red or (state.rpmWarning and C.amber or C.primary))
-    or C.primary
-  drawNeedle(center, scale, activeFraction, needleColor)
+    or (needleMode == 'digital' and C.cyan or C.primary)
+  if needleMode == 'digital' then
+    drawDigitalIndicator(center, scale, activeFraction, needleColor)
+  else
+    drawNeedle(center, scale, activeFraction, needleColor)
+  end
 end
 
 local function drawFuelGauge(origin, scale, state)
@@ -237,7 +252,7 @@ local function drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   local needleFraction = settings.gt7SpeedNeedleMode == 'analog'
     and state.gt7SpeedNeedleNormalized or directFraction
   drawDialTicks(center, scale, labels, function(value) return tostring(value) end,
-    needleFraction, state, settings, false)
+    needleFraction, state, settings, false, settings.gt7SpeedNeedleMode)
   centeredText(settings.speedUnit, 15 * scale, center + vec2(0, -25 * scale), C.secondary)
   drawFuelGauge(origin, scale, state)
 end
@@ -253,16 +268,19 @@ local function drawBoostGauge(origin, scale, state)
   local endAngle = math.rad(335)
   local radius = 65 * scale
   drawArc(center, radius, startAngle, endAngle, C.inactive, 12 * scale, 20)
-  local normalized = U.clamp((state.turboBoost or 0) / math.max(state.turboDisplayMax or 1, 0.1), 0, 1)
+  local pressureNormalized = U.clamp((state.turboBoost or 0)
+    / math.max(state.turboDisplayMax or 1, 0.1), 0, 1)
+  local needleNormalized = U.clamp(state.boostNeedleNormalized or 0, 0, 1)
   local segments = 10
-  local filled = math.floor(normalized * segments + 0.5)
+  local filled = math.floor(pressureNormalized * segments + 0.5)
   for i = 1, segments do
     local a1 = startAngle + (endAngle - startAngle) * (i - 1) / segments + 0.012
     local a2 = startAngle + (endAngle - startAngle) * i / segments - 0.012
     local color = i <= filled and (i >= 9 and C.red or C.cyan) or C.inactive
     drawArc(center, radius, a1, a2, color, 8 * scale, 4)
   end
-  local needle = U.polar(center, 48 * scale, startAngle + (endAngle - startAngle) * normalized)
+  local needle = U.polar(center, 48 * scale,
+    startAngle + (endAngle - startAngle) * needleNormalized)
   drawLine(center, needle, C.primary, 3 * scale)
   ui.drawCircleFilled(center, 6 * scale, C.outline, 16)
   centeredText('0', 10 * scale, U.polar(center, radius, startAngle), C.secondary)
@@ -287,7 +305,7 @@ local function drawRpmDial(origin, scale, state, settings, backdropOpacity)
     local rounded = U.round(value)
     return math.abs(value - rounded) < 0.01 and tostring(rounded) or string.format('%.1f', value)
   end,
-    needleFraction, state, settings, true)
+    needleFraction, state, settings, true, settings.gt7RpmNeedleMode)
   centeredText('x1000 RPM', 14 * scale, center + vec2(0, -25 * scale), C.secondary)
   drawBoostGauge(origin, scale, state)
 end

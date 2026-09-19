@@ -33,6 +33,8 @@ local function blankState()
     turboAvailable = false,
     turboBoost = 0,
     turboDisplayMax = 1,
+    boostNeedleNormalized = 0,
+    boostNeedleVelocity = 0,
     rpmWarningFraction = 0.86,
     rpmRedlineFraction = 0.96,
     rpmWarning = false,
@@ -214,6 +216,8 @@ function M.update(state, dt, settings)
     state.gt7SpeedNeedleVelocity = 0
     state.gt7RpmNeedleNormalized = 0
     state.gt7RpmNeedleVelocity = 0
+    state.boostNeedleNormalized = 0
+    state.boostNeedleVelocity = 0
     return
   end
 
@@ -287,8 +291,15 @@ function M.update(state, dt, settings)
   state.turboBoost = math.max(0, U.number(U.read(car, 'turboBoost', 0), 0))
   if state.turboAvailable then
     state.turboDisplayMax = math.max(state.turboDisplayMax, 1, math.ceil(state.turboBoost * 2) / 2)
+    local boostTarget = U.clamp(state.turboBoost / math.max(state.turboDisplayMax, 0.1), 0, 1)
+    state.boostNeedleNormalized, state.boostNeedleVelocity = springNeedle(
+      state.boostNeedleNormalized, state.boostNeedleVelocity, boostTarget, dt,
+      Gt7Layout.boostNeedleSpring, Gt7Layout.boostNeedleDamping,
+      Gt7Layout.boostNeedleMaxVelocity)
   else
     state.turboDisplayMax = 1
+    state.boostNeedleNormalized = 0
+    state.boostNeedleVelocity = 0
   end
 
   local tcModes = U.number(U.read(car, 'tractionControlModes', nil), nil)
