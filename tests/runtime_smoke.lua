@@ -16,6 +16,7 @@ function rgbm(r, g, b, mult) return { r = r, g = g, b = b, mult = mult } end
 local saved = { layoutVersion = 4, instrumentMode = 'analog' }
 local car
 local sim = { raceFlagType = nil }
+local carId = 'test_car'
 local windowWidth, windowHeight = 460, 460
 local pressInstrumentMode = false
 local pressSpeedNeedleMode = false
@@ -23,6 +24,7 @@ local pressRpmNeedleMode = false
 local lastWindowConstraint
 
 ac = {
+  FolderID = { ContentCars = 1 },
   storage = function(defaults)
     for key, value in pairs(defaults) do
       if saved[key] == nil then saved[key] = value end
@@ -30,6 +32,8 @@ ac = {
     return saved
   end,
   getCar = function() return car end,
+  getCarID = function() return carId end,
+  getFolder = function() return 'cars' end,
   getSim = function() return sim end,
   getControllerSteerValue = function() return 0 end,
   broadcastSharedEvent = function() end,
@@ -37,6 +41,9 @@ ac = {
     lastWindowConstraint = { id = id, minimum = minimum, maximum = maximum }
   end
 }
+
+io.load = function() return '{"topspeed":"275 km/h"}' end
+JSON = { parse = function() return { topspeed = '275 km/h' } end }
 
 local function noop() end
 ui = {
@@ -158,6 +165,9 @@ end
 local telemetry = Telemetry.new()
 car = makeCar({ ffbFinal = 0.62 })
 for _ = 1, 30 do Telemetry.update(telemetry, 1 / 60, Settings.values) end
+assert(telemetry.speedGaugeMaximum == 280 and telemetry.speedGaugeStep == 40
+  and telemetry.speedGaugeSource == 'car-ui',
+  'GT7 speed scale must use the current car metadata with a readable rounded range')
 assert(telemetry.ffbAvailable and telemetry.ffbPercent >= 60 and telemetry.ffbPercent <= 63,
   'FFB must use and smooth ffbFinal magnitude')
 assert(telemetry.gt7SpeedNeedleNormalized > 0.3 and telemetry.gt7SpeedNeedleNormalized < 0.5,
@@ -166,6 +176,28 @@ assert(telemetry.gt7RpmNeedleNormalized > 0.45 and telemetry.gt7RpmNeedleNormali
   'GT7 analog RPM needle must track its own normalized target')
 assert(telemetry.ffbNeedle > 0.55 and telemetry.ffbNeedle < 0.70,
   'FFB needle must settle near the live magnitude')
+
+Settings.values.speedUnit = 'mph'
+Telemetry.update(telemetry, 1 / 60, Settings.values)
+assert(telemetry.speedGaugeMaximum == 175 and telemetry.speedGaugeStep == 25,
+  'GT7 speed scale must rebuild cleanly for mph')
+Settings.values.speedUnit = 'km/h'
+
+local primaryCar = car
+local metadataLoader = io.load
+carId = 'missing_metadata_car'
+io.load = function() return nil end
+local fallbackTelemetry = Telemetry.new()
+car = makeCar({ rpmLimiter = 6200 })
+Telemetry.update(fallbackTelemetry, 1 / 60, Settings.values)
+assert(fallbackTelemetry.speedGaugeMaximum == 320
+  and fallbackTelemetry.speedGaugeSource == 'fallback',
+  'missing top-speed metadata must retain the explicit speed fallback')
+assert(fallbackTelemetry.rpmGaugeLimiter == 7000,
+  'GT7 RPM scale must follow and round the current car limiter')
+io.load = metadataLoader
+carId = 'test_car'
+car = primaryCar
 
 car.ffbFinal = -1.03
 Telemetry.update(telemetry, 1 / 60, Settings.values)

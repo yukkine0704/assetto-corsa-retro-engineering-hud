@@ -123,6 +123,18 @@ local function rpmColor(fraction, active, state, settings)
   return C.primary
 end
 
+local function rpmGaugeFraction(state, limiterFraction)
+  local limiter = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  local gaugeLimiter = math.max(state.rpmGaugeLimiter or limiter, 1000)
+  return U.clamp(limiter * (limiterFraction or 1) / gaugeLimiter, 0, 1)
+end
+
+local function rpmDialColor(fraction, active, state, settings)
+  local limiter = math.max(state.rpmDisplayLimiter or 1000, 1000)
+  local gaugeLimiter = math.max(state.rpmGaugeLimiter or limiter, 1000)
+  return rpmColor(U.clamp(fraction * gaugeLimiter / limiter, 0, 1), active, state, settings)
+end
+
 local function drawRpmBar(origin, scale, state, settings)
   local totalWidth = Layout.rpmRight - Layout.rpmLeft
   local segmentWidth = (totalWidth - Layout.rpmGap * (Layout.rpmSegments - 1)) / Layout.rpmSegments
@@ -179,6 +191,19 @@ local function gaugeAngle(fraction)
   return Layout.gaugeStart + (Layout.gaugeEnd - Layout.gaugeStart) * U.clamp(fraction, 0, 1)
 end
 
+local function scaleLabels(maximum, step)
+  local labels = {}
+  local value = 0
+  while value <= maximum + step * 0.01 and #labels < 12 do
+    labels[#labels + 1] = value
+    value = value + step
+  end
+  if labels[#labels] < maximum - step * 0.01 then
+    if #labels >= 12 then labels[#labels] = maximum else labels[#labels + 1] = maximum end
+  end
+  return labels
+end
+
 local function drawNeedle(center, scale, fraction, color)
   local angle = gaugeAngle(fraction)
   local tip = U.polar(center, Layout.needleLength * scale, angle)
@@ -203,7 +228,7 @@ local function drawDigitalDialBar(center, scale, activeFraction, state, settings
     local active = i <= filled
     local color = C.inactive
     if active then
-      color = rpmDial and rpmColor(fraction, true, state, settings) or C.cyan
+      color = rpmDial and rpmDialColor(fraction, true, state, settings) or C.cyan
     end
     drawArc(center, Layout.digitalDialBarRadius * scale, startAngle, endAngle,
       color, Layout.digitalDialBarWidth * scale, 5)
@@ -224,14 +249,18 @@ local function drawDialTicks(center, scale, labelValues, formatter, activeFracti
     local outer = U.polar(center, Layout.tickRadius * scale, angle)
     local inner = U.polar(center, (Layout.tickRadius - (major and 15 or 8)) * scale, angle)
     local color = C.primary
-    if rpmDial and fraction >= (state.rpmRedlineFraction or 0.96) then color = C.red end
+    if rpmDial and fraction >= rpmGaugeFraction(state, state.rpmRedlineFraction or 0.96) then
+      color = C.red
+    end
     drawLine(inner, outer, color, (major and 2.6 or 1.2) * scale)
   end
 
-  for i, value in ipairs(labelValues) do
-    local fraction = (#labelValues == 1) and 0 or (i - 1) / (#labelValues - 1)
+  local scaleMaximum = math.max(labelValues[#labelValues] or 1, 1)
+  for _, value in ipairs(labelValues) do
+    local fraction = U.clamp(value / scaleMaximum, 0, 1)
     local labelPosition = U.polar(center, (Layout.tickRadius - 35) * scale, gaugeAngle(fraction))
-    centeredText(formatter(value), 18 * scale, labelPosition, C.primary)
+    local labelSize = #labelValues > 9 and 14 or (#labelValues > 5 and 16 or 18)
+    centeredText(formatter(value), labelSize * scale, labelPosition, C.primary)
   end
 
   if needleMode ~= 'digital' then
@@ -269,12 +298,12 @@ local function drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   ui.drawCircleFilled(center, radius, withAlpha(C.panel, math.min(0.96, backdropOpacity + 0.18)), 72)
   drawDialBezel(center, radius, scale, state, settings)
 
-  local maximum = settings.speedUnit == 'mph' and 200 or 320
-  local labels = settings.speedUnit == 'mph' and { 0, 50, 100, 150, 200 } or { 0, 80, 160, 240, 320 }
+  local maximum = state.speedGaugeMaximum or (settings.speedUnit == 'mph' and 200 or 320)
+  local labels = scaleLabels(maximum, state.speedGaugeStep or maximum / 8)
   local directFraction = U.clamp((state.speedValue or 0) / maximum, 0, 1)
   local needleFraction = settings.gt7SpeedNeedleMode == 'analog'
     and state.gt7SpeedNeedleNormalized or directFraction
-  drawDialTicks(center, scale, labels, function(value) return tostring(value) end,
+  drawDialTicks(center, scale, labels, function(value) return tostring(U.round(value)) end,
     needleFraction, state, settings, false, settings.gt7SpeedNeedleMode)
   centeredText(settings.speedUnit, 15 * scale, center + vec2(0, -25 * scale), C.secondary)
   drawFuelGauge(origin, scale, state)
@@ -319,7 +348,8 @@ local function drawRpmDial(origin, scale, state, settings, backdropOpacity)
   drawDialBezel(center, radius, scale, state, settings)
 
   local maximum = math.max((state.rpmGaugeLimiter or 8000) / 1000, 1)
-  local labels = { 0, maximum * 0.25, maximum * 0.5, maximum * 0.75, maximum }
+  local rpmStep = maximum <= 9 and 1 or (maximum <= 18 and 2 or math.ceil(maximum / 8))
+  local labels = scaleLabels(maximum, rpmStep)
   local needleFraction = settings.gt7RpmNeedleMode == 'analog'
     and state.gt7RpmNeedleNormalized or U.clamp(state.rpmGaugeNormalized or 0, 0, 1)
   drawDialTicks(center, scale, labels, function(value)

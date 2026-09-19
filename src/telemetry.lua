@@ -13,6 +13,10 @@ local function blankState()
     speedValue = 0,
     speedText = '000',
     speedUnit = 'km/h',
+    speedGaugeMaximum = 320,
+    speedGaugeStep = 40,
+    speedGaugeTopSpeedKmh = nil,
+    speedGaugeSource = 'fallback',
     rpm = 0,
     rpmText = '0000',
     rpmLimiter = nil,
@@ -108,6 +112,65 @@ local function formattedGear(state, value)
   if state._gearValue ~= value then
     state._gearValue = value
     state.gearText = gearLabel(value)
+  end
+end
+
+local function readCarTopSpeedKmh(carId)
+  if type(carId) ~= 'string' or carId == '' or type(ac.getFolder) ~= 'function'
+      or ac.FolderID == nil or ac.FolderID.ContentCars == nil
+      or io == nil or type(io.load) ~= 'function'
+      or JSON == nil or type(JSON.parse) ~= 'function' then
+    return nil
+  end
+
+  local okPath, carsFolder = pcall(ac.getFolder, ac.FolderID.ContentCars)
+  if not okPath or type(carsFolder) ~= 'string' then return nil end
+  local path = carsFolder .. '\\' .. carId .. '\\ui\\ui_car.json'
+  local okLoad, contents = pcall(io.load, path)
+  if not okLoad or type(contents) ~= 'string' then return nil end
+  local okJson, metadata = pcall(JSON.parse, contents)
+  if not okJson or type(metadata) ~= 'table' then return nil end
+
+  local declared = metadata.topspeed
+  if type(declared) == 'number' then return declared > 0 and declared or nil end
+  if type(declared) ~= 'string' then return nil end
+  local parsed = tonumber(declared:match('(%d+%.?%d*)'))
+  if parsed and declared:lower():find('mph', 1, true) then parsed = parsed / 0.621371 end
+  return parsed and parsed > 0 and parsed or nil
+end
+
+local function niceGaugeScale(value, minimum)
+  value = math.max(value or minimum, minimum)
+  local rawStep = value / 8
+  local magnitude = 10 ^ math.floor(math.log(rawStep) / math.log(10))
+  local normalized = rawStep / magnitude
+  local stepFactor = normalized <= 1 and 1
+    or (normalized <= 2 and 2
+    or (normalized <= 2.5 and 2.5
+    or (normalized <= 4 and 4
+    or (normalized <= 5 and 5 or 10))))
+  local step = stepFactor * magnitude
+  return math.ceil(value / step) * step, step
+end
+
+local function updateSpeedGauge(state, settings)
+  local carId = nil
+  if type(ac.getCarID) == 'function' then
+    local ok, value = pcall(ac.getCarID, 0)
+    if ok and type(value) == 'string' then carId = value end
+  end
+  local carKey = carId or false
+  if state._speedGaugeCarKey ~= carKey then
+    state._speedGaugeCarKey = carKey
+    state.speedGaugeTopSpeedKmh = readCarTopSpeedKmh(carId)
+    state.speedGaugeSource = state.speedGaugeTopSpeedKmh and 'car-ui' or 'fallback'
+  end
+
+  local basisKmh = state.speedGaugeTopSpeedKmh or 320
+  if settings.speedUnit == 'mph' then
+    state.speedGaugeMaximum, state.speedGaugeStep = niceGaugeScale(basisKmh * 0.621371, 80)
+  else
+    state.speedGaugeMaximum, state.speedGaugeStep = niceGaugeScale(basisKmh, 160)
   end
 end
 
@@ -227,6 +290,7 @@ function M.update(state, dt, settings)
   local speedValue = U.round(settings.speedUnit == 'mph' and speedKmh * 0.621371 or speedKmh)
   formattedSpeed(state, speedValue, settings.speedUnit)
   state.speedKmh = speedKmh
+  updateSpeedGauge(state, settings)
 
   state.rpm = math.max(U.number(U.read(car, 'rpm', 0), 0), 0)
   local carLimiter = U.number(U.read(car, 'rpmLimiter', nil), nil)
@@ -250,8 +314,7 @@ function M.update(state, dt, settings)
   state.rpmWarning = state.rpmNormalized >= settings.rpmWarningFraction
   state.rpmRedline = state.rpmNormalized >= settings.rpmRedlineFraction
   updateAnalogNeedle(state, dt)
-  local speedGaugeMaximum = settings.speedUnit == 'mph' and 200 or 320
-  updateGt7Needles(state, U.clamp(state.speedValue / speedGaugeMaximum, 0, 1),
+  updateGt7Needles(state, U.clamp(state.speedValue / state.speedGaugeMaximum, 0, 1),
     state.rpmGaugeNormalized, dt)
   formattedRpm(state, U.round(state.rpm))
 
