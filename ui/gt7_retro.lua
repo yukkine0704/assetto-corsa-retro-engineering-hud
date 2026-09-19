@@ -112,9 +112,13 @@ end
 local function drawRpmBar(origin, scale, state, settings)
   local totalWidth = Layout.rpmRight - Layout.rpmLeft
   local segmentWidth = (totalWidth - Layout.rpmGap * (Layout.rpmSegments - 1)) / Layout.rpmSegments
-  local filled = math.floor(U.clamp(state.rpmNormalized or 0, 0, 1) * Layout.rpmSegments + 0.5)
+  local rpmFraction = U.clamp(state.rpmNormalized or 0, 0, 1)
+  local startFraction = Layout.rpmStartFraction
+  local displayedFraction = U.clamp((rpmFraction - startFraction) / (1 - startFraction), 0, 1)
+  local filled = rpmFraction >= startFraction
+    and math.max(1, math.ceil(displayedFraction * Layout.rpmSegments)) or 0
   for i = 1, Layout.rpmSegments do
-    local fraction = i / Layout.rpmSegments
+    local fraction = startFraction + (1 - startFraction) * i / Layout.rpmSegments
     local x = Layout.rpmLeft + (i - 1) * (segmentWidth + Layout.rpmGap)
     local topLeft = point(origin, scale, x, Layout.rpmTop)
     local bottomRight = point(origin, scale, x + segmentWidth, Layout.rpmTop + Layout.rpmHeight)
@@ -229,8 +233,11 @@ local function drawSpeedDial(origin, scale, state, settings, backdropOpacity)
 
   local maximum = settings.speedUnit == 'mph' and 200 or 320
   local labels = settings.speedUnit == 'mph' and { 0, 50, 100, 150, 200 } or { 0, 80, 160, 240, 320 }
+  local directFraction = U.clamp((state.speedValue or 0) / maximum, 0, 1)
+  local needleFraction = settings.gt7SpeedNeedleMode == 'analog'
+    and state.gt7SpeedNeedleNormalized or directFraction
   drawDialTicks(center, scale, labels, function(value) return tostring(value) end,
-    U.clamp((state.speedValue or 0) / maximum, 0, 1), state, settings, false)
+    needleFraction, state, settings, false)
   centeredText(settings.speedUnit, 15 * scale, center + vec2(0, -25 * scale), C.secondary)
   drawFuelGauge(origin, scale, state)
 end
@@ -274,11 +281,13 @@ local function drawRpmDial(origin, scale, state, settings, backdropOpacity)
 
   local maximum = math.max((state.rpmGaugeLimiter or 8000) / 1000, 1)
   local labels = { 0, maximum * 0.25, maximum * 0.5, maximum * 0.75, maximum }
+  local needleFraction = settings.gt7RpmNeedleMode == 'analog'
+    and state.gt7RpmNeedleNormalized or U.clamp(state.rpmGaugeNormalized or 0, 0, 1)
   drawDialTicks(center, scale, labels, function(value)
     local rounded = U.round(value)
     return math.abs(value - rounded) < 0.01 and tostring(rounded) or string.format('%.1f', value)
   end,
-    U.clamp(state.rpmGaugeNormalized or 0, 0, 1), state, settings, true)
+    needleFraction, state, settings, true)
   centeredText('x1000 RPM', 14 * scale, center + vec2(0, -25 * scale), C.secondary)
   drawBoostGauge(origin, scale, state)
 end

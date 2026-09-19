@@ -1,3 +1,5 @@
+local DialLayout = require('src/layout')
+
 -- Dedicated panoramic design space. The renderer always fits this rectangle
 -- uniformly into the current CSP app window, so no coordinate depends on the
 -- user's resolution and the cluster can safely coexist with the square dials.
@@ -25,6 +27,14 @@ return {
   rpmHeight = 24,
   rpmSegments = 34,
   rpmGap = 3,
+  rpmStartFraction = DialLayout.digitalRpmAlertStartFraction,
+
+  speedNeedleSpring = 55,
+  speedNeedleDamping = 13,
+  speedNeedleMaxVelocity = 2.2,
+  rpmNeedleSpring = DialLayout.analogNeedleSpring,
+  rpmNeedleDamping = DialLayout.analogNeedleDamping,
+  rpmNeedleMaxVelocity = DialLayout.analogNeedleMaxVelocity,
 
   ffbCenterX = 720,
   ffbCenterY = 408,

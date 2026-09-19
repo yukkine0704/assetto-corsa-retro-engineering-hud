@@ -23,6 +23,10 @@ local function blankState()
     rpmGaugeNormalized = 0,
     analogNeedleNormalized = 0,
     analogNeedleVelocity = 0,
+    gt7SpeedNeedleNormalized = 0,
+    gt7SpeedNeedleVelocity = 0,
+    gt7RpmNeedleNormalized = 0,
+    gt7RpmNeedleVelocity = 0,
     fuel = nil,
     maxFuel = nil,
     fuelNormalized = 0,
@@ -120,6 +124,26 @@ local function updateAnalogNeedle(state, dt)
   state.analogNeedleVelocity = velocity
 end
 
+local function springNeedle(position, velocity, target, dt, spring, damping, maximumVelocity)
+  local step = U.clamp(dt or 0, 0, 0.05)
+  if step <= 0 then return position, velocity end
+
+  local acceleration = (target - position) * spring - velocity * damping
+  velocity = U.clamp(velocity + acceleration * step, -maximumVelocity, maximumVelocity)
+  position = U.clamp(position + velocity * step, 0, 1)
+  if (position == 0 and velocity < 0) or (position == 1 and velocity > 0) then velocity = 0 end
+  return position, velocity
+end
+
+local function updateGt7Needles(state, speedTarget, rpmTarget, dt)
+  state.gt7SpeedNeedleNormalized, state.gt7SpeedNeedleVelocity = springNeedle(
+    state.gt7SpeedNeedleNormalized, state.gt7SpeedNeedleVelocity, speedTarget, dt,
+    Gt7Layout.speedNeedleSpring, Gt7Layout.speedNeedleDamping, Gt7Layout.speedNeedleMaxVelocity)
+  state.gt7RpmNeedleNormalized, state.gt7RpmNeedleVelocity = springNeedle(
+    state.gt7RpmNeedleNormalized, state.gt7RpmNeedleVelocity, rpmTarget, dt,
+    Gt7Layout.rpmNeedleSpring, Gt7Layout.rpmNeedleDamping, Gt7Layout.rpmNeedleMaxVelocity)
+end
+
 local function updateFfb(state, car, dt)
   local physicsAvailable = U.read(car, 'physicsAvailable', true)
   local raw = U.number(U.read(car, 'ffbFinal', nil), nil)
@@ -186,6 +210,10 @@ function M.update(state, dt, settings)
     state.ffbPercent = 0
     state.ffbClipping = false
     state.ffbClipHold = 0
+    state.gt7SpeedNeedleNormalized = 0
+    state.gt7SpeedNeedleVelocity = 0
+    state.gt7RpmNeedleNormalized = 0
+    state.gt7RpmNeedleVelocity = 0
     return
   end
 
@@ -218,6 +246,9 @@ function M.update(state, dt, settings)
   state.rpmWarning = state.rpmNormalized >= settings.rpmWarningFraction
   state.rpmRedline = state.rpmNormalized >= settings.rpmRedlineFraction
   updateAnalogNeedle(state, dt)
+  local speedGaugeMaximum = settings.speedUnit == 'mph' and 200 or 320
+  updateGt7Needles(state, U.clamp(state.speedValue / speedGaugeMaximum, 0, 1),
+    state.rpmGaugeNormalized, dt)
   formattedRpm(state, U.round(state.rpm))
 
   state.gear = U.number(U.read(car, 'gear', 0), 0)

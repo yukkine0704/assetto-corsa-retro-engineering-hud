@@ -14,7 +14,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 - Embedded, blinking bezel indicators.
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.
-- Primitive-drawn panoramic cluster with analog speed/RPM, boost, fuel and a live FFB magnitude meter.
+- Primitive-drawn panoramic cluster with independently selectable direct or inertial speed/RPM needles, boost, fuel and a live analog FFB magnitude meter.
 - Light and dark dial themes.
 - Persistent visual, RPM and display settings.
 
@@ -34,7 +34,7 @@ For a manual install, extract the archive into the Assetto Corsa root. It contai
 
 Use the app settings window to cycle through the three layouts, choose the light or dark theme, set the RPM thresholds, and tune scale and transparency. GT7 Retro preserves a wide aspect ratio inside the existing app window; widen the window for its largest presentation.
 
-The GT7 Retro FFB gauge reads CSP's `ac.getCar(0).ffbFinal`, displays its absolute magnitude on a 0–100% scale and briefly holds the saturation warning when the raw value reaches 98% or more. In replays or other contexts where physics telemetry is unavailable it shows `--%` instead of substituting an estimate.
+The GT7 Retro FFB gauge reads CSP's `ac.getCar(0).ffbFinal` and moves its inertial needle using the absolute 0–100% magnitude. Its saturation warning briefly holds when the raw value reaches 98% or more. In replays or other contexts where physics telemetry is unavailable the needle parks at zero instead of substituting an estimate.
 
 ## License
 

@@ -18,6 +18,8 @@ local car
 local sim = { raceFlagType = nil }
 local windowWidth, windowHeight = 460, 460
 local pressInstrumentMode = false
+local pressSpeedNeedleMode = false
+local pressRpmNeedleMode = false
 local lastWindowConstraint
 
 ac = {
@@ -66,6 +68,14 @@ ui = {
       pressInstrumentMode = false
       return true
     end
+    if pressSpeedNeedleMode and label:find('Speed dial needle:', 1, true) == 1 then
+      pressSpeedNeedleMode = false
+      return true
+    end
+    if pressRpmNeedleMode and label:find('RPM dial needle:', 1, true) == 1 then
+      pressRpmNeedleMode = false
+      return true
+    end
     return false
   end
 }
@@ -74,9 +84,16 @@ script = {}
 require('app')
 local Settings = require('src/settings')
 local Telemetry = require('src/telemetry')
+local DialLayout = require('src/layout')
+local Gt7Layout = require('src/gt7_retro_layout')
 
 assert(Settings.values.instrumentMode == 'analog', 'v5 migration must preserve analog')
-assert(Settings.values.layoutVersion == 5, 'v5 migration must complete')
+assert(Settings.values.layoutVersion == 6, 'v6 migration must complete')
+assert(Settings.values.gt7SpeedNeedleMode == 'digital'
+  and Settings.values.gt7RpmNeedleMode == 'digital',
+  'v6 migration must preserve the former direct GT7 needle response')
+assert(Gt7Layout.rpmStartFraction == DialLayout.digitalRpmAlertStartFraction,
+  'GT7 RPM band must start at the digital lower warning-light threshold')
 
 local expected = { 'gt7_retro', 'digital', 'analog' }
 for _, mode in ipairs(expected) do
@@ -84,6 +101,18 @@ for _, mode in ipairs(expected) do
   Settings.draw()
   assert(Settings.values.instrumentMode == mode, 'instrument selector cycle failed')
 end
+
+Settings.values.instrumentMode = 'gt7_retro'
+pressSpeedNeedleMode = true
+Settings.draw()
+assert(Settings.values.gt7SpeedNeedleMode == 'analog'
+  and Settings.values.gt7RpmNeedleMode == 'digital',
+  'GT7 speed needle selection must be independent')
+pressRpmNeedleMode = true
+Settings.draw()
+assert(Settings.values.gt7SpeedNeedleMode == 'analog'
+  and Settings.values.gt7RpmNeedleMode == 'analog',
+  'GT7 RPM needle selection must be independent')
 
 local function makeCar(overrides)
   local value = {
@@ -131,6 +160,10 @@ car = makeCar({ ffbFinal = 0.62 })
 for _ = 1, 30 do Telemetry.update(telemetry, 1 / 60, Settings.values) end
 assert(telemetry.ffbAvailable and telemetry.ffbPercent >= 60 and telemetry.ffbPercent <= 63,
   'FFB must use and smooth ffbFinal magnitude')
+assert(telemetry.gt7SpeedNeedleNormalized > 0.3 and telemetry.gt7SpeedNeedleNormalized < 0.5,
+  'GT7 analog speed needle must track its own normalized target')
+assert(telemetry.gt7RpmNeedleNormalized > 0.45 and telemetry.gt7RpmNeedleNormalized < 0.6,
+  'GT7 analog RPM needle must track its own normalized target')
 assert(telemetry.ffbNeedle > 0.55 and telemetry.ffbNeedle < 0.70,
   'FFB needle must settle near the live magnitude')
 
@@ -153,8 +186,8 @@ assert(telemetry.ffbNeedle == 0 and telemetry.ffbNeedleVelocity == 0,
 local scenarios = {
   { mode = 'digital', width = 460, height = 460, car = makeCar({ gear = 0, rpm = 2000 }), unit = 'km/h' },
   { mode = 'analog', width = 740, height = 420, car = makeCar({ gear = -1, rpm = 7000 }), unit = 'mph' },
-  { mode = 'gt7_retro', width = 460, height = 460, car = makeCar({ gear = 0, rpm = 4200, ffbFinal = 0 }), unit = 'km/h', scale = 0.55 },
-  { mode = 'gt7_retro', width = 900, height = 360, car = makeCar({ gear = -1, rpm = 7200, ffbFinal = 0.91 }), unit = 'mph', scale = 1.15 },
+  { mode = 'gt7_retro', width = 460, height = 460, car = makeCar({ gear = 0, rpm = 4200, ffbFinal = 0 }), unit = 'km/h', scale = 0.55, speedNeedle = 'digital', rpmNeedle = 'analog' },
+  { mode = 'gt7_retro', width = 900, height = 360, car = makeCar({ gear = -1, rpm = 7200, ffbFinal = 0.91 }), unit = 'mph', scale = 1.15, speedNeedle = 'analog', rpmNeedle = 'digital' },
   { mode = 'gt7_retro', width = 1200, height = 420, car = makeCar({
     turboCount = 1, turboBoost = 1.2, rpm = 7800, ffbFinal = 1.03,
     turningLeftLights = true, handbrake = 1, headlightsActive = true,
@@ -167,6 +200,8 @@ for _, scenario in ipairs(scenarios) do
   Settings.values.speedUnit = scenario.unit
   Settings.values.hudScale = scenario.scale or 0.72
   Settings.values.theme = scenario.width > 1000 and 'light' or 'dark'
+  Settings.values.gt7SpeedNeedleMode = scenario.speedNeedle or Settings.values.gt7SpeedNeedleMode
+  Settings.values.gt7RpmNeedleMode = scenario.rpmNeedle or Settings.values.gt7RpmNeedleMode
   sim.raceFlagType = scenario.flag
   windowWidth, windowHeight, car = scenario.width, scenario.height, scenario.car
   script.update(1 / 60)

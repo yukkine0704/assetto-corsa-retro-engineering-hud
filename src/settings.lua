@@ -11,6 +11,8 @@ M.values = ac.storage({
   instrumentMode = 'digital',
   theme = 'dark',
   analogAuxiliaryMode = 'auto',
+  gt7SpeedNeedleMode = 'digital',
+  gt7RpmNeedleMode = 'digital',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
   fallbackRpm = 8000,
@@ -61,6 +63,16 @@ if (M.values.layoutVersion or 1) < 5 then
   end
   M.values.layoutVersion = 5
 end
+
+-- v6 adds independent GT7 Retro needle response modes. New fields default to
+-- the previous direct response so existing installations do not change feel.
+local function validNeedleMode(value)
+  return value == 'analog' and 'analog' or 'digital'
+end
+
+M.values.gt7SpeedNeedleMode = validNeedleMode(M.values.gt7SpeedNeedleMode)
+M.values.gt7RpmNeedleMode = validNeedleMode(M.values.gt7RpmNeedleMode)
+if (M.values.layoutVersion or 1) < 6 then M.values.layoutVersion = 6 end
 
 local function normalizeRpmThresholds()
   local redline = math.max(0.82, math.min(M.values.rpmRedlineFraction or 0.96, 1.0))
@@ -120,6 +132,14 @@ local function nextAnalogAuxiliaryMode()
   M.values.analogAuxiliaryMode = 'auto'
 end
 
+local function nextNeedleMode(key)
+  M.values[key] = M.values[key] == 'analog' and 'digital' or 'analog'
+end
+
+local function needleModeLabel(key)
+  return M.values[key] == 'analog' and 'Analog' or 'Digital'
+end
+
 local instrumentModes = {
   { value = 'digital', label = 'Digital dial' },
   { value = 'analog', label = 'Analog dial' },
@@ -175,6 +195,15 @@ function M.draw()
     if ui.button('Analog lower gauge: ' .. string.upper(M.values.analogAuxiliaryMode or 'auto')) then
       nextAnalogAuxiliaryMode()
       M.lastChange = 'Analog lower gauge'
+    end
+  elseif M.values.instrumentMode == 'gt7_retro' then
+    if ui.button('Speed dial needle: ' .. needleModeLabel('gt7SpeedNeedleMode')) then
+      nextNeedleMode('gt7SpeedNeedleMode')
+      M.lastChange = 'GT7 speed needle'
+    end
+    if ui.button('RPM dial needle: ' .. needleModeLabel('gt7RpmNeedleMode')) then
+      nextNeedleMode('gt7RpmNeedleMode')
+      M.lastChange = 'GT7 RPM needle'
     end
   end
 
