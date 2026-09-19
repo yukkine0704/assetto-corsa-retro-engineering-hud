@@ -177,18 +177,31 @@ local function drawNeedle(center, scale, fraction, color)
   ui.drawCircleFilled(center, 4 * scale, color, 16)
 end
 
-local function drawDigitalIndicator(center, scale, fraction, color)
-  local angle = gaugeAngle(fraction)
-  local inner = U.polar(center, (Layout.tickRadius - 27) * scale, angle)
-  local outer = U.polar(center, (Layout.tickRadius + 1) * scale, angle)
-  drawLine(inner, outer, withAlpha(color, 0.20), 9 * scale)
-  drawLine(inner, outer, color, 4 * scale)
-  drawArc(center, (Layout.tickRadius - 4) * scale, angle - 0.022, angle + 0.022,
-    color, 7 * scale, 5)
+local function drawDigitalDialBar(center, scale, activeFraction, state, settings, rpmDial)
+  local segmentCount = Layout.digitalDialBarSegments
+  local span = (Layout.gaugeEnd - Layout.gaugeStart) / segmentCount
+  local filled = math.floor(U.clamp(activeFraction, 0, 1) * segmentCount + 0.5)
+
+  for i = 1, segmentCount do
+    local fraction = i / segmentCount
+    local startAngle = Layout.gaugeStart + (i - 1) * span + Layout.digitalDialBarGap
+    local endAngle = Layout.gaugeStart + i * span - Layout.digitalDialBarGap
+    local active = i <= filled
+    local color = C.inactive
+    if active then
+      color = rpmDial and rpmColor(fraction, true, state, settings) or C.cyan
+    end
+    drawArc(center, Layout.digitalDialBarRadius * scale, startAngle, endAngle,
+      color, Layout.digitalDialBarWidth * scale, 5)
+  end
 end
 
 local function drawDialTicks(center, scale, labelValues, formatter, activeFraction, state, settings,
     rpmDial, needleMode)
+  if needleMode == 'digital' then
+    drawDigitalDialBar(center, scale, activeFraction, state, settings, rpmDial)
+  end
+
   local minorCount = 40
   for i = 0, minorCount do
     local fraction = i / minorCount
@@ -207,11 +220,9 @@ local function drawDialTicks(center, scale, labelValues, formatter, activeFracti
     centeredText(formatter(value), 18 * scale, labelPosition, C.primary)
   end
 
-  local needleColor = rpmDial and (state.rpmRedline and C.red or (state.rpmWarning and C.amber or C.primary))
-    or (needleMode == 'digital' and C.cyan or C.primary)
-  if needleMode == 'digital' then
-    drawDigitalIndicator(center, scale, activeFraction, needleColor)
-  else
+  if needleMode ~= 'digital' then
+    local needleColor = rpmDial
+      and (state.rpmRedline and C.red or (state.rpmWarning and C.amber or C.primary)) or C.primary
     drawNeedle(center, scale, activeFraction, needleColor)
   end
 end

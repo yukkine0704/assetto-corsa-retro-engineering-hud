@@ -15,6 +15,10 @@ return {
   needleLength = 124,
   gaugeStart = math.rad(140),
   gaugeEnd = math.rad(400),
+  digitalDialBarRadius = 161,
+  digitalDialBarWidth = 8,
+  digitalDialBarSegments = 36,
+  digitalDialBarGap = 0.014,
 
   centerLeft = 420,
   centerRight = 1020,

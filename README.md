@@ -14,7 +14,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 - Embedded, blinking bezel indicators.
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.
-- Primitive-drawn panoramic cluster with independently selectable digital markers or inertial speed/RPM needles, inertial boost, fuel and a live analog FFB magnitude meter.
+- Primitive-drawn panoramic cluster with independently selectable digital bars or inertial speed/RPM needles, inertial boost, fuel and a live analog FFB magnitude meter.
 - Light and dark dial themes.
 - Persistent visual, RPM and display settings.
 
