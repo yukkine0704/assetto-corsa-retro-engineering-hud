@@ -10,7 +10,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 
 - Digital, analog and panoramic GT7 Retro instrument modes.
 - Central speed/gear readout, RPM arc, redline and shift alerts.
-- Digital race-flag alerts that share the active flag color and blink.
+- Digital race-flag alerts and GT7 Retro dial bezels that share the active flag color and blink.
 - Embedded, blinking bezel indicators.
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.

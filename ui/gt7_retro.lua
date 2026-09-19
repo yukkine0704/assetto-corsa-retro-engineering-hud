@@ -91,6 +91,20 @@ local function flagBlinkOn(state, settings)
   return true
 end
 
+local function drawDialBezel(center, radius, scale, state, settings)
+  local color = flagColor(state)
+  local lit = color ~= nil and flagBlinkOn(state, settings)
+
+  if lit then
+    ui.drawCircle(center, radius, withAlpha(color, 0.16), 72, 11 * scale)
+  end
+  ui.drawCircle(center, radius, lit and color or C.metal, 72, (lit and 5 or 4) * scale)
+  ui.drawCircle(center, radius - 8 * scale,
+    lit and withAlpha(color, 0.78) or C.outline, 72, 2 * scale)
+  ui.drawCircle(center, radius - 16 * scale,
+    lit and withAlpha(color, 0.34) or C.outlineDim, 72, 2 * scale)
+end
+
 local function rpmColor(fraction, active, state, settings)
   local warning = state.rpmWarningFraction or 0.86
   local redline = state.rpmRedlineFraction or 0.96
@@ -253,9 +267,7 @@ local function drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   local center = point(origin, scale, Layout.leftCenterX, Layout.dialCenterY)
   local radius = Layout.dialRadius * scale
   ui.drawCircleFilled(center, radius, withAlpha(C.panel, math.min(0.96, backdropOpacity + 0.18)), 72)
-  ui.drawCircle(center, radius, C.metal, 72, 4 * scale)
-  ui.drawCircle(center, radius - 8 * scale, C.outline, 72, 2 * scale)
-  ui.drawCircle(center, radius - 16 * scale, C.outlineDim, 72, 2 * scale)
+  drawDialBezel(center, radius, scale, state, settings)
 
   local maximum = settings.speedUnit == 'mph' and 200 or 320
   local labels = settings.speedUnit == 'mph' and { 0, 50, 100, 150, 200 } or { 0, 80, 160, 240, 320 }
@@ -304,9 +316,7 @@ local function drawRpmDial(origin, scale, state, settings, backdropOpacity)
   local center = point(origin, scale, Layout.rightCenterX, Layout.dialCenterY)
   local radius = Layout.dialRadius * scale
   ui.drawCircleFilled(center, radius, withAlpha(C.panel, math.min(0.96, backdropOpacity + 0.18)), 72)
-  ui.drawCircle(center, radius, C.metal, 72, 4 * scale)
-  ui.drawCircle(center, radius - 8 * scale, C.outline, 72, 2 * scale)
-  ui.drawCircle(center, radius - 16 * scale, C.outlineDim, 72, 2 * scale)
+  drawDialBezel(center, radius, scale, state, settings)
 
   local maximum = math.max((state.rpmGaugeLimiter or 8000) / 1000, 1)
   local labels = { 0, maximum * 0.25, maximum * 0.5, maximum * 0.75, maximum }
