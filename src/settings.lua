@@ -51,6 +51,17 @@ if (M.values.layoutVersion or 1) < 4 then
   M.values.layoutVersion = 4
 end
 
+-- v5 adds a third renderer without changing the meaning of either existing
+-- stored value. Keep digital/analog selections intact and only repair values
+-- left by an unknown or older experimental build.
+if (M.values.layoutVersion or 1) < 5 then
+  local mode = M.values.instrumentMode
+  if mode ~= 'digital' and mode ~= 'analog' and mode ~= 'gt7_retro' then
+    M.values.instrumentMode = 'digital'
+  end
+  M.values.layoutVersion = 5
+end
+
 local function normalizeRpmThresholds()
   local redline = math.max(0.82, math.min(M.values.rpmRedlineFraction or 0.96, 1.0))
   local warning = math.max(0.70, math.min(M.values.rpmWarningFraction or 0.86, 0.98))
@@ -109,9 +120,32 @@ local function nextAnalogAuxiliaryMode()
   M.values.analogAuxiliaryMode = 'auto'
 end
 
+local instrumentModes = {
+  { value = 'digital', label = 'Digital dial' },
+  { value = 'analog', label = 'Analog dial' },
+  { value = 'gt7_retro', label = 'GT7 Retro' }
+}
+
+local function instrumentModeLabel()
+  for _, mode in ipairs(instrumentModes) do
+    if M.values.instrumentMode == mode.value then return mode.label end
+  end
+  return instrumentModes[1].label
+end
+
+local function nextInstrumentMode()
+  for i, mode in ipairs(instrumentModes) do
+    if M.values.instrumentMode == mode.value then
+      M.values.instrumentMode = instrumentModes[i % #instrumentModes + 1].value
+      return
+    end
+  end
+  M.values.instrumentMode = instrumentModes[1].value
+end
+
 function M.draw()
   ui.header('Retro Engineering HUD')
-  ui.text('v0.10  /  digital + analog driving dial')
+  ui.text('v1.1  /  three instrument layouts')
   ui.separator()
 
   slider('HUD scale', 'hudScale', 0.55, 1.15, '%.2fx')
@@ -132,14 +166,16 @@ function M.draw()
     M.lastChange = 'Speed unit'
   end
 
-  if ui.button('Instrument mode: ' .. (M.values.instrumentMode == 'analog' and 'Analog dial' or 'Digital dial')) then
-    M.values.instrumentMode = M.values.instrumentMode == 'analog' and 'digital' or 'analog'
+  if ui.button('Instrument mode: ' .. instrumentModeLabel()) then
+    nextInstrumentMode()
     M.lastChange = 'Instrument mode'
   end
 
-  if ui.button('Analog lower gauge: ' .. string.upper(M.values.analogAuxiliaryMode or 'auto')) then
-    nextAnalogAuxiliaryMode()
-    M.lastChange = 'Analog lower gauge'
+  if M.values.instrumentMode == 'analog' then
+    if ui.button('Analog lower gauge: ' .. string.upper(M.values.analogAuxiliaryMode or 'auto')) then
+      nextAnalogAuxiliaryMode()
+      M.lastChange = 'Analog lower gauge'
+    end
   end
 
   ui.separator()
@@ -163,7 +199,11 @@ function M.draw()
 
   ui.separator()
   ui.text('Last change: ' .. M.lastChange)
-  ui.textWrapped('The dial is transparent outside its circular surface. Adjust its compact scale and frosted backdrop here; resize or move it through the normal AC app controls.')
+  if M.values.instrumentMode == 'gt7_retro' then
+    ui.textWrapped('Resize GT7 Retro by dragging the app window borders or corners. Its panoramic aspect ratio is preserved; HUD scale is a secondary fine adjustment.')
+  else
+    ui.textWrapped('The dial is transparent outside its circular surface. Adjust its compact scale and frosted backdrop here; resize or move it through the normal AC app controls.')
+  end
 end
 
 return M

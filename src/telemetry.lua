@@ -41,6 +41,15 @@ local function blankState()
     brake = 0,
     clutch = 0,
     handbrake = 0,
+    engineLifeLeft = nil,
+    engineWarning = false,
+    ffbAvailable = false,
+    ffbSigned = 0,
+    ffbMagnitudeRaw = 0,
+    ffbMagnitude = 0,
+    ffbPercent = 0,
+    ffbClipping = false,
+    ffbClipHold = 0,
     tcSupported = false,
     tcLevel = nil,
     tcActive = nil,
@@ -108,6 +117,40 @@ local function updateAnalogNeedle(state, dt)
   state.analogNeedleVelocity = velocity
 end
 
+local function updateFfb(state, car, dt)
+  local physicsAvailable = U.read(car, 'physicsAvailable', true)
+  local raw = U.number(U.read(car, 'ffbFinal', nil), nil)
+  state.ffbAvailable = raw ~= nil and physicsAvailable ~= false
+
+  if not state.ffbAvailable then
+    state.ffbSigned = 0
+    state.ffbMagnitudeRaw = 0
+    state.ffbMagnitude = 0
+    state.ffbPercent = 0
+    state.ffbClipping = false
+    state.ffbClipHold = 0
+    return
+  end
+
+  state.ffbSigned = raw
+  state.ffbMagnitudeRaw = math.abs(raw)
+  local target = U.clamp(state.ffbMagnitudeRaw, 0, 1)
+  local step = U.clamp(dt or 0, 0, 0.05)
+  -- Faster attack keeps impacts and clipping legible; a slightly slower
+  -- release removes high-frequency chatter without making the meter feel late.
+  local timeConstant = target > state.ffbMagnitude and 0.055 or 0.12
+  local alpha = step > 0 and (1 - math.exp(-step / timeConstant)) or 1
+  state.ffbMagnitude = state.ffbMagnitude + (target - state.ffbMagnitude) * alpha
+  state.ffbPercent = U.round(U.clamp(state.ffbMagnitude, 0, 1) * 100)
+
+  if state.ffbMagnitudeRaw >= 0.98 then
+    state.ffbClipHold = 0.18
+  else
+    state.ffbClipHold = math.max(0, state.ffbClipHold - step)
+  end
+  state.ffbClipping = state.ffbClipHold > 0
+end
+
 function M.update(state, dt, settings)
   state.clock = state.clock + math.max(dt or 0, 0)
   state.raceFlagType = U.read(SIM, 'raceFlagType', nil)
@@ -115,6 +158,13 @@ function M.update(state, dt, settings)
   local car = ac.getCar(0)
   if not car then
     state.available = false
+    state.ffbAvailable = false
+    state.ffbSigned = 0
+    state.ffbMagnitudeRaw = 0
+    state.ffbMagnitude = 0
+    state.ffbPercent = 0
+    state.ffbClipping = false
+    state.ffbClipHold = 0
     return
   end
 
@@ -172,6 +222,9 @@ function M.update(state, dt, settings)
   local rawClutch = U.number(U.read(car, 'clutch', nil), nil)
   state.clutch = rawClutch and U.clamp(1 - rawClutch, 0, 1) or 0
   state.handbrake = U.clamp(U.number(U.read(car, 'handbrake', 0), 0), 0, 1)
+  state.engineLifeLeft = U.number(U.read(car, 'engineLifeLeft', nil), nil)
+  state.engineWarning = state.engineLifeLeft ~= nil and state.engineLifeLeft < 850
+  updateFfb(state, car, dt)
 
   state.fuel = U.number(U.read(car, 'fuel', nil), nil)
   state.maxFuel = U.number(U.read(car, 'maxFuel', nil), nil)
@@ -220,10 +273,15 @@ function M.update(state, dt, settings)
 
   state.pitLane = U.read(car, 'isInPit', false) or U.read(car, 'isInPitlane', false)
 
-  -- Some CSP builds expose a pit-limiter flag on the car, while the installed
-  -- local examples do not rely on one. Probe safely and hide it when absent.
-  local optionalPitLimiter = U.read(car, 'pitLimiter', nil)
-  state.pitLimiter = optionalPitLimiter
+  -- CSP exposes the driver's manual limiter selection and the final in-action
+  -- state separately. Prefer the selection so the telltale stays lit while
+  -- enabled, with the in-action flag as a compatibility fallback.
+  local manualLimiter = U.read(car, 'manualPitsSpeedLimiterEnabled', nil)
+  if manualLimiter ~= nil then
+    state.pitLimiter = manualLimiter
+  else
+    state.pitLimiter = U.read(car, 'speedLimiterInAction', nil)
+  end
 end
 
 return M
