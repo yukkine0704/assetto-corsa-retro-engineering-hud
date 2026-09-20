@@ -468,8 +468,8 @@ end
 local function drawPedalsAndFlagLights(origin, scale, state, settings)
   drawPedalBar(origin, scale, Layout.brakeX, state.brake, C.red)
   drawPedalBar(origin, scale, Layout.throttleX, state.throttle, C.cyan)
-  drawFlagLamps(origin, scale, Layout.indicatorLeftX - Layout.flagLampSideOffset, state, settings)
-  drawFlagLamps(origin, scale, Layout.indicatorRightX + Layout.flagLampSideOffset, state, settings)
+  drawFlagLamps(origin, scale, Layout.indicatorLeftX + Layout.flagLampSideOffset, state, settings)
+  drawFlagLamps(origin, scale, Layout.indicatorRightX - Layout.flagLampSideOffset, state, settings)
 end
 
 local function drawBrakeIcon(center, scale, color)
