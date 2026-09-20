@@ -44,7 +44,7 @@ Theme.palettes = {
     metalDim = rgbm(0xB6 / 255, 0xB0 / 255, 0xA4 / 255, 0.9),
     outline = rgbm(0x8A / 255, 0x5A / 255, 0x27 / 255, 0.95),
     outlineSoft = rgbm(0xB2 / 255, 0x94 / 255, 0x6B / 255, 0.78),
-    outlineDim = rgbm(0xC9 / 255, 0xC0 / 255, 0xB1 / 255, 0.9),
+    outlineDim = rgbm(0x82 / 255, 0x79 / 255, 0x6B / 255, 0.82),
     primary = rgbm(0x2E / 255, 0x2B / 255, 0x26 / 255, 1),
     secondary = rgbm(0x65 / 255, 0x59 / 255, 0x48 / 255, 0.95),
     amber = rgbm(0x95 / 255, 0x50 / 255, 0x00 / 255, 1),
@@ -60,7 +60,7 @@ Theme.palettes = {
     red = rgbm(0xAD / 255, 0x29 / 255, 0x22 / 255, 1),
     redDim = rgbm(0xEF / 255, 0xBB / 255, 0xB5 / 255, 0.92),
     coreRed = rgbm(0xF7 / 255, 0xD4 / 255, 0xCF / 255, 0.94),
-    inactive = rgbm(0xD5 / 255, 0xCE / 255, 0xC0 / 255, 0.92),
+    inactive = rgbm(0xA8 / 255, 0x9F / 255, 0x90 / 255, 0.92),
     debug = rgbm(0xE8 / 255, 0xE2 / 255, 0xD7 / 255, 0.94)
   }
 }

@@ -12,8 +12,10 @@ return {
   tyreWidth = 22,
   tyreHeight = 54,
 
-  tyreColdRatio = 0.78,
-  tyreOptimumLowRatio = 0.94,
+  -- Keep normal road temperatures from reading as cold blue. A tyre around
+  -- 80–85% of its optimum should already transition clearly toward green.
+  tyreColdRatio = 0.70,
+  tyreOptimumLowRatio = 0.86,
   tyreOptimumHighRatio = 1.08,
   tyreHotRatio = 1.24,
 

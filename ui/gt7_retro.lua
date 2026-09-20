@@ -73,6 +73,11 @@ local function indicatorLit(state, settings)
   return math.floor(state.clock / Layout.indicatorPeriod) % 2 == 0
 end
 
+local function warningBlink(state, settings)
+  if settings.animateRedlineAlert == false then return true end
+  return math.floor(state.clock / Layout.flagBlinkPeriod) % 2 == 0
+end
+
 local function flagColor(state)
   local flag = state.raceFlagType
   if type(flag) ~= 'number' or flag == 0 then return nil end
@@ -576,7 +581,8 @@ end
 
 local function drawStatusStrips(origin, scale, state, settings, backdropOpacity)
   local fuelLow = state.fuel ~= nil and (state.fuelNormalized or 0) < 0.15
-  drawStatusPod(origin, scale, 88, 'FUEL', state.fuel ~= nil, fuelLow, C.red, nil, backdropOpacity)
+  local fuelActive = fuelLow and warningBlink(state, settings)
+  drawStatusPod(origin, scale, 88, 'FUEL', state.fuel ~= nil, fuelActive, C.red, nil, backdropOpacity)
   drawStatusPod(origin, scale, 146, 'TC', state.tcSupported, state.tcActive == true,
     C.amber, nil, backdropOpacity)
   drawStatusPod(origin, scale, 304, 'PIT', true, state.pitLane or state.pitLimiter == true,
