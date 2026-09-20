@@ -458,9 +458,8 @@ local function drawFlagLamps(origin, scale, x, state, settings)
   local color = flagColor(state)
   local lit = color ~= nil and flagBlinkOn(state, settings)
   local lampColor = lit and color or C.inactive
-  local centerX = x + Layout.pedalWidth / 2
   for offset = -1, 1, 2 do
-    local center = point(origin, scale, centerX + offset * Layout.flagLampSpacing / 2, Layout.flagLampY)
+    local center = point(origin, scale, x, Layout.indicatorY + offset * Layout.flagLampSpacing / 2)
     if lit then ui.drawCircleFilled(center, 8 * scale, withAlpha(color, 0.16), 18) end
     ui.drawCircleFilled(center, Layout.flagLampRadius * scale, lampColor, 18)
   end
@@ -469,8 +468,8 @@ end
 local function drawPedalsAndFlagLights(origin, scale, state, settings)
   drawPedalBar(origin, scale, Layout.brakeX, state.brake, C.red)
   drawPedalBar(origin, scale, Layout.throttleX, state.throttle, C.cyan)
-  drawFlagLamps(origin, scale, Layout.brakeX, state, settings)
-  drawFlagLamps(origin, scale, Layout.throttleX, state, settings)
+  drawFlagLamps(origin, scale, Layout.indicatorLeftX - Layout.flagLampSideOffset, state, settings)
+  drawFlagLamps(origin, scale, Layout.indicatorRightX + Layout.flagLampSideOffset, state, settings)
 end
 
 local function drawBrakeIcon(center, scale, color)

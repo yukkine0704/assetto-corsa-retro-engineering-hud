@@ -75,8 +75,8 @@ return {
   boostStart = math.rad(135),
   boostEnd = math.rad(405),
   boostRadius = 65,
-  flagLampY = 166,
   flagLampSpacing = 12,
+  flagLampSideOffset = 30,
   flagLampRadius = 4.5,
 
   indicatorPeriod = 0.42,
