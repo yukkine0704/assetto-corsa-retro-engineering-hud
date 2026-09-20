@@ -5,6 +5,25 @@ local Gt7Layout = require('src/gt7_retro_layout')
 local M = {}
 local SIM = ac.getSim()
 
+local function blankWheelCondition()
+  return {
+    available = false,
+    temperature = nil,
+    optimumTemperature = nil,
+    temperatureRatio = nil,
+    wear = 0,
+    remaining = 1,
+    wearAvailable = false,
+    dirty = 0,
+    grain = 0,
+    blister = 0,
+    flatSpot = 0,
+    suspensionDamage = 0,
+    conditionSeverity = 0,
+    isBlown = false
+  }
+end
+
 local function blankState()
   return {
     available = false,
@@ -78,7 +97,16 @@ local function blankState()
     indicatorPhase = nil,
     raceFlagType = nil,
     pitLane = false,
-    pitLimiter = nil
+    pitLimiter = nil,
+    condition = {
+      available = false,
+      body = { front = 0, rear = 0, left = 0, right = 0 },
+      engineDamage = 0,
+      gearboxDamage = 0,
+      wheels = {
+        blankWheelCondition(), blankWheelCondition(), blankWheelCondition(), blankWheelCondition()
+      }
+    }
   }
 end
 
@@ -200,6 +228,103 @@ local function springNeedle(position, velocity, target, dt, spring, damping, max
   return position, velocity
 end
 
+local function finiteNumber(value, fallback)
+  if type(value) ~= 'number' or value ~= value or value == math.huge or value == -math.huge then
+    return fallback
+  end
+  return value
+end
+
+local function resetCondition(state)
+  local condition = state.condition
+  condition.available = false
+  condition.body.front = 0
+  condition.body.rear = 0
+  condition.body.left = 0
+  condition.body.right = 0
+  condition.engineDamage = 0
+  condition.gearboxDamage = 0
+  for _, wheel in ipairs(condition.wheels) do
+    wheel.available = false
+    wheel.temperature = nil
+    wheel.optimumTemperature = nil
+    wheel.temperatureRatio = nil
+    wheel.wear = 0
+    wheel.remaining = 1
+    wheel.wearAvailable = false
+    wheel.dirty = 0
+    wheel.grain = 0
+    wheel.blister = 0
+    wheel.flatSpot = 0
+    wheel.suspensionDamage = 0
+    wheel.conditionSeverity = 0
+    wheel.isBlown = false
+  end
+end
+
+local function normalizedDamage(value)
+  return U.clamp(finiteNumber(value, 0) / 100, 0, 1)
+end
+
+local function updateCondition(state, car)
+  local condition = state.condition
+  condition.available = true
+
+  local damage = U.read(car, 'damage', nil)
+  condition.body.front = normalizedDamage(U.read(damage, 0, 0))
+  condition.body.rear = normalizedDamage(U.read(damage, 1, 0))
+  condition.body.left = normalizedDamage(U.read(damage, 2, 0))
+  condition.body.right = normalizedDamage(U.read(damage, 3, 0))
+
+  local engineLife = finiteNumber(U.read(car, 'engineLifeLeft', nil), nil)
+  condition.engineDamage = engineLife and U.clamp(1 - engineLife / 1000, 0, 1) or 0
+  condition.gearboxDamage = U.clamp(finiteNumber(U.read(car, 'gearboxDamage', 0), 0), 0, 1)
+
+  local sourceWheels = U.read(car, 'wheels', nil)
+  for sourceIndex = 0, 3 do
+    local source = U.read(sourceWheels, sourceIndex, nil)
+    local wheel = condition.wheels[sourceIndex + 1]
+    wheel.available = source ~= nil
+    if source then
+      local coreTemperature = finiteNumber(U.read(source, 'tyreCoreTemperature', nil), nil)
+      local middleTemperature = finiteNumber(U.read(source, 'tyreMiddleTemperature', nil), nil)
+      local optimum = finiteNumber(U.read(source, 'tyreOptimumTemperature', nil), nil)
+      wheel.temperature = coreTemperature or middleTemperature
+      wheel.optimumTemperature = optimum
+      wheel.temperatureRatio = wheel.temperature and optimum and optimum > 1
+        and U.clamp(wheel.temperature / optimum, 0, 2) or nil
+
+      local rawWear = finiteNumber(U.read(source, 'tyreWear', nil), nil)
+      wheel.wearAvailable = rawWear ~= nil and rawWear >= 0
+      wheel.wear = wheel.wearAvailable and U.clamp(rawWear, 0, 1) or 0
+      wheel.remaining = wheel.wearAvailable and (1 - wheel.wear) or 1
+      wheel.dirty = U.clamp(finiteNumber(U.read(source, 'tyreDirty', 0), 0), 0, 1)
+      wheel.grain = U.clamp(finiteNumber(U.read(source, 'tyreGrain', 0), 0), 0, 1)
+      wheel.blister = U.clamp(finiteNumber(U.read(source, 'tyreBlister', 0), 0), 0, 1)
+      wheel.flatSpot = U.clamp(finiteNumber(U.read(source, 'tyreFlatSpot', 0), 0), 0, 1)
+      wheel.suspensionDamage = U.clamp(
+        finiteNumber(U.read(source, 'suspensionDamage', 0), 0), 0, 1)
+      wheel.isBlown = U.read(source, 'isBlown', false) == true
+      wheel.conditionSeverity = math.max(wheel.wear, wheel.dirty * 0.55, wheel.grain,
+        wheel.blister, wheel.flatSpot, wheel.suspensionDamage, wheel.isBlown and 1 or 0)
+    else
+      wheel.temperature = nil
+      wheel.optimumTemperature = nil
+      wheel.temperatureRatio = nil
+      wheel.wear = 0
+      wheel.remaining = 1
+      wheel.wearAvailable = false
+      wheel.dirty = 0
+      wheel.grain = 0
+      wheel.blister = 0
+      wheel.flatSpot = 0
+      wheel.suspensionDamage = 0
+      wheel.conditionSeverity = 0
+      wheel.isBlown = false
+    end
+  end
+end
+
 local function updateGt7Needles(state, speedTarget, rpmTarget, dt)
   state.gt7SpeedNeedleNormalized, state.gt7SpeedNeedleVelocity = springNeedle(
     state.gt7SpeedNeedleNormalized, state.gt7SpeedNeedleVelocity, speedTarget, dt,
@@ -281,6 +406,7 @@ function M.update(state, dt, settings)
     state.gt7RpmNeedleVelocity = 0
     state.boostNeedleNormalized = 0
     state.boostNeedleVelocity = 0
+    resetCondition(state)
     return
   end
 
@@ -343,6 +469,7 @@ function M.update(state, dt, settings)
   state.handbrake = U.clamp(U.number(U.read(car, 'handbrake', 0), 0), 0, 1)
   state.engineLifeLeft = U.number(U.read(car, 'engineLifeLeft', nil), nil)
   state.engineWarning = state.engineLifeLeft ~= nil and state.engineLifeLeft < 850
+  updateCondition(state, car)
   updateFfb(state, car, dt)
 
   state.fuel = U.number(U.read(car, 'fuel', nil), nil)

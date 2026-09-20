@@ -1,0 +1,206 @@
+local Theme = require('src/theme')
+local Layout = require('src/car_condition_layout')
+local U = require('src/utils')
+
+local M = {}
+local C = Theme.colors
+
+local function point(origin, scale, x, y)
+  return origin + vec2(x * scale, y * scale)
+end
+
+local function withAlpha(color, alpha)
+  return Theme.withAlpha(color, U.clamp(alpha, 0, 1))
+end
+
+local function mix(a, b, amount)
+  amount = U.clamp(amount, 0, 1)
+  return rgbm(
+    a.r + (b.r - a.r) * amount,
+    a.g + (b.g - a.g) * amount,
+    a.b + (b.b - a.b) * amount,
+    (a.mult or 1) + ((b.mult or 1) - (a.mult or 1)) * amount)
+end
+
+local function centeredText(text, size, center, color)
+  local measured = ui.measureDWriteText(text, size)
+  ui.dwriteDrawText(text, size, center - measured / 2, color)
+end
+
+local function drawLine(a, b, color, width)
+  ui.drawLine(a, b, color, width)
+end
+
+local function drawPolygon(origin, scale, coordinates, fill, stroke, width)
+  ui.pathClear()
+  for _, coordinate in ipairs(coordinates) do
+    ui.pathLineTo(point(origin, scale, coordinate[1], coordinate[2]))
+  end
+  ui.pathFillConvex(fill)
+  ui.pathClear()
+  for _, coordinate in ipairs(coordinates) do
+    ui.pathLineTo(point(origin, scale, coordinate[1], coordinate[2]))
+  end
+  ui.pathStroke(stroke, true, width * scale)
+end
+
+local function damageColor(value)
+  value = U.clamp(value or 0, 0, 1)
+  if value >= Layout.conditionDanger then return C.red end
+  if value >= Layout.conditionWarn then return C.amber end
+  if value > 0.04 then return C.flagYellow end
+  return C.outlineDim
+end
+
+local function damageFill(value)
+  value = U.clamp(value or 0, 0, 1)
+  if value <= 0.04 then return C.panelRaised end
+  return withAlpha(damageColor(value), 0.20 + value * 0.34)
+end
+
+local function temperatureColor(wheel)
+  if not wheel or not wheel.temperatureRatio then return C.metalDim end
+  local ratio = wheel.temperatureRatio
+  if ratio <= Layout.tyreColdRatio then return C.cyan end
+  if ratio < Layout.tyreOptimumLowRatio then
+    return mix(C.cyan, C.green,
+      (ratio - Layout.tyreColdRatio) / (Layout.tyreOptimumLowRatio - Layout.tyreColdRatio))
+  end
+  if ratio <= Layout.tyreOptimumHighRatio then return C.green end
+  if ratio < Layout.tyreHotRatio then
+    return mix(C.green, C.amber,
+      (ratio - Layout.tyreOptimumHighRatio) / (Layout.tyreHotRatio - Layout.tyreOptimumHighRatio))
+  end
+  return mix(C.amber, C.red, U.clamp((ratio - Layout.tyreHotRatio) / 0.24, 0, 1))
+end
+
+local function conditionColor(wheel)
+  if not wheel or not wheel.available then return C.outlineDim end
+  if wheel.isBlown or (wheel.conditionSeverity or 0) >= Layout.conditionDanger then return C.red end
+  if (wheel.conditionSeverity or 0) >= Layout.conditionWarn then return C.amber end
+  return C.green
+end
+
+local function drawTyre(origin, scale, x, y, name, wheel, state)
+  local halfWidth = Layout.tyreWidth / 2
+  local halfHeight = Layout.tyreHeight / 2
+  local topLeft = point(origin, scale, x - halfWidth, y - halfHeight)
+  local bottomRight = point(origin, scale, x + halfWidth, y + halfHeight)
+  local tempColor = temperatureColor(wheel)
+  local stateColor = conditionColor(wheel)
+  local punctureLit = wheel and wheel.isBlown
+    and math.floor(state.clock / Layout.punctureBlinkPeriod) % 2 == 0
+
+  ui.drawRectFilled(topLeft, bottomRight,
+    withAlpha(punctureLit and C.red or tempColor, wheel and wheel.available and 0.88 or 0.42),
+    4 * scale)
+  ui.drawRect(topLeft, bottomRight, stateColor, 4 * scale, nil, 2.4 * scale)
+
+  -- Remaining tread is a separate state channel so temperature never hides wear.
+  local railX = x < Layout.carCenterX and x - halfWidth - 5 or x + halfWidth + 3
+  local railTop = point(origin, scale, railX, y - halfHeight)
+  local railBottom = point(origin, scale, railX + 2, y + halfHeight)
+  ui.drawRectFilled(railTop, railBottom, C.inactive)
+  local remaining = wheel and wheel.wearAvailable and U.clamp(wheel.remaining, 0, 1) or 0
+  local fillTop = y + halfHeight - Layout.tyreHeight * remaining
+  ui.drawRectFilled(point(origin, scale, railX, fillTop), railBottom, stateColor)
+
+  if wheel and wheel.isBlown then
+    drawLine(point(origin, scale, x - 7, y - 13), point(origin, scale, x + 7, y + 13), C.primary, 2 * scale)
+    drawLine(point(origin, scale, x + 7, y - 13), point(origin, scale, x - 7, y + 13), C.primary, 2 * scale)
+  end
+
+  local temperature = wheel and wheel.temperature
+  local temperatureText = temperature and string.format('%d°', U.round(temperature)) or '--°'
+  local lifeText = wheel and wheel.wearAvailable
+    and string.format('%d%%', U.round(U.clamp(wheel.remaining, 0, 1) * 100)) or '--%'
+  centeredText(name .. ' ' .. temperatureText, 11 * scale,
+    point(origin, scale, x, y - halfHeight - 12), C.primary)
+  centeredText(lifeText, 10 * scale, point(origin, scale, x, y + halfHeight + 12), stateColor)
+end
+
+local function drawBody(origin, scale, condition)
+  local front = condition.body.front or 0
+  local rear = condition.body.rear or 0
+  local left = condition.body.left or 0
+  local right = condition.body.right or 0
+
+  drawPolygon(origin, scale, {
+    { 120, 24 }, { 143, 37 }, { 154, 73 }, { 151, 196 },
+    { 139, 222 }, { 101, 222 }, { 89, 196 }, { 86, 73 }, { 97, 37 }
+  }, C.panel, C.metal, 2)
+
+  drawPolygon(origin, scale, {
+    { 120, 29 }, { 139, 41 }, { 147, 69 }, { 93, 69 }, { 101, 41 }
+  }, damageFill(front), damageColor(front), 1.4)
+  drawPolygon(origin, scale, {
+    { 93, 73 }, { 106, 70 }, { 106, 194 }, { 96, 207 }, { 91, 193 }
+  }, damageFill(left), damageColor(left), 1.4)
+  drawPolygon(origin, scale, {
+    { 147, 73 }, { 134, 70 }, { 134, 194 }, { 144, 207 }, { 149, 193 }
+  }, damageFill(right), damageColor(right), 1.4)
+  drawPolygon(origin, scale, {
+    { 96, 207 }, { 106, 192 }, { 134, 192 }, { 144, 207 }, { 136, 217 }, { 104, 217 }
+  }, damageFill(rear), damageColor(rear), 1.4)
+
+  drawPolygon(origin, scale, {
+    { 106, 78 }, { 134, 78 }, { 139, 107 }, { 134, 162 },
+    { 106, 162 }, { 101, 107 }
+  }, C.surface, C.outlineSoft, 1.2)
+
+  local engineDamage = condition.engineDamage or 0
+  local gearboxDamage = condition.gearboxDamage or 0
+  centeredText('ENG', 10 * scale, point(origin, scale, 120, 102), damageColor(engineDamage))
+  centeredText(string.format('%d', U.round((1 - engineDamage) * 100)), 15 * scale,
+    point(origin, scale, 120, 120), damageColor(engineDamage))
+  centeredText('GBX', 9 * scale, point(origin, scale, 120, 148), damageColor(gearboxDamage))
+  centeredText(string.format('%d', U.round((1 - gearboxDamage) * 100)), 12 * scale,
+    point(origin, scale, 120, 164), damageColor(gearboxDamage))
+
+  ui.drawTriangleFilled(point(origin, scale, 120, 12), point(origin, scale, 114, 20),
+    point(origin, scale, 126, 20), C.secondary)
+end
+
+local function drawLegend(origin, scale)
+  local y = 246
+  local items = {
+    { x = 42, label = 'COLD', color = C.cyan },
+    { x = 120, label = 'OPT', color = C.green },
+    { x = 196, label = 'HOT', color = C.red }
+  }
+  for _, item in ipairs(items) do
+    ui.drawCircleFilled(point(origin, scale, item.x - 19, y), 3.5 * scale, item.color, 12)
+    centeredText(item.label, 9 * scale, point(origin, scale, item.x + 5, y), C.secondary)
+  end
+end
+
+function M.draw(state, settings)
+  C = Theme.get(settings.theme)
+  local width = ui.windowWidth()
+  local height = ui.windowHeight()
+  local scale = math.min(width / Layout.width, height / Layout.height)
+  local origin = vec2((width - Layout.width * scale) / 2, (height - Layout.height * scale) / 2)
+  local condition = state.condition
+
+  ui.pushStyleVarAlpha(settings.opacity or 1)
+  ui.pushDWriteFont(Theme.fonts.utility)
+  ui.drawRectFilled(origin + vec2(3 * scale, 3 * scale),
+    origin + vec2((Layout.width - 3) * scale, (Layout.height - 3) * scale),
+    withAlpha(C.panel, settings.backgroundOpacity or 0.72), 10 * scale)
+
+  if not condition or not condition.available then
+    centeredText('NO CAR DATA', 14 * scale, point(origin, scale, 120, 130), C.secondary)
+  else
+    drawBody(origin, scale, condition)
+    drawTyre(origin, scale, Layout.leftWheelX, Layout.frontWheelY, 'FL', condition.wheels[1], state)
+    drawTyre(origin, scale, Layout.rightWheelX, Layout.frontWheelY, 'FR', condition.wheels[2], state)
+    drawTyre(origin, scale, Layout.leftWheelX, Layout.rearWheelY, 'RL', condition.wheels[3], state)
+    drawTyre(origin, scale, Layout.rightWheelX, Layout.rearWheelY, 'RR', condition.wheels[4], state)
+    drawLegend(origin, scale)
+  end
+
+  ui.popDWriteFont()
+  ui.popStyleVar(1)
+end
+
+return M

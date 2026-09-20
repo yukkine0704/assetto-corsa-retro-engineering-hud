@@ -53,7 +53,9 @@ ui = {
   drawCircle = noop,
   drawCircleFilled = noop,
   drawLine = noop,
+  drawRect = noop,
   drawRectFilled = noop,
+  drawTriangleFilled = noop,
   dwriteDrawText = noop,
   pathArcTo = noop,
   pathClear = noop,
@@ -122,6 +124,22 @@ assert(Settings.values.gt7SpeedNeedleMode == 'analog'
   'GT7 RPM needle selection must be independent')
 
 local function makeCar(overrides)
+  local function wheel(overrides)
+    local value = {
+      tyreCoreTemperature = 84,
+      tyreMiddleTemperature = 86,
+      tyreOptimumTemperature = 88,
+      tyreWear = 0.08,
+      tyreDirty = 0.02,
+      tyreGrain = 0,
+      tyreBlister = 0,
+      tyreFlatSpot = 0,
+      suspensionDamage = 0,
+      isBlown = false
+    }
+    for key, override in pairs(overrides or {}) do value[key] = override end
+    return value
+  end
   local value = {
     physicsAvailable = true,
     speedKmh = 128,
@@ -156,6 +174,14 @@ local function makeCar(overrides)
     manualPitsSpeedLimiterEnabled = false,
     speedLimiterInAction = false,
     engineLifeLeft = 1000,
+    gearboxDamage = 0,
+    damage = { [0] = 0, [1] = 0, [2] = 0, [3] = 0, [4] = 0 },
+    wheels = {
+      [0] = wheel(),
+      [1] = wheel({ tyreCoreTemperature = 70 }),
+      [2] = wheel({ tyreCoreTemperature = 112, tyreWear = 0.42 }),
+      [3] = wheel({ tyreWear = 0.9, tyreFlatSpot = 0.76, isBlown = true })
+    },
     ffbFinal = 0
   }
   for key, override in pairs(overrides or {}) do value[key] = override end
@@ -176,6 +202,11 @@ assert(telemetry.gt7RpmNeedleNormalized > 0.45 and telemetry.gt7RpmNeedleNormali
   'GT7 analog RPM needle must track its own normalized target')
 assert(telemetry.ffbNeedle > 0.55 and telemetry.ffbNeedle < 0.70,
   'FFB needle must settle near the live magnitude')
+assert(telemetry.condition.available and telemetry.condition.wheels[1].temperatureRatio > 0.9,
+  'car-condition telemetry must normalize tyre temperature against its optimum')
+assert(telemetry.condition.wheels[4].isBlown
+  and telemetry.condition.wheels[4].conditionSeverity == 1,
+  'punctures must take priority over other tyre-condition signals')
 
 Settings.values.speedUnit = 'mph'
 Telemetry.update(telemetry, 1 / 60, Settings.values)
@@ -265,5 +296,9 @@ assert(lastWindowConstraint.minimum.x == 340 and lastWindowConstraint.minimum.y 
 car = nil
 script.update(1 / 60)
 script.windowMain()
+windowWidth, windowHeight = 240, 260
+script.conditionMain()
+assert(type(script.conditionMain) == 'function',
+  'independent car-condition window must be registered separately from the main HUD')
 
 print('Runtime smoke scenarios passed')

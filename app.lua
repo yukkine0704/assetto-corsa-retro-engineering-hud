@@ -2,6 +2,7 @@ local Settings = require('src/settings')
 local Telemetry = require('src/telemetry')
 local Dial = require('ui/dial')
 local Gt7Retro = require('ui/gt7_retro')
+local CarCondition = require('ui/car_condition')
 
 local state = Telemetry.new()
 local THEME_EVENT = 'retro-engineering-hud/theme/v1'
@@ -60,4 +61,8 @@ end
 
 function script.settingsMain(_)
   Settings.draw()
+end
+
+function script.conditionMain(_)
+  CarCondition.draw(state, Settings.values)
 end

@@ -16,6 +16,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 - Optional turbo or fuel lower gauge in analog mode.
 - Primitive-drawn panoramic cluster with independently selectable digital bars or inertial speed/RPM needles, inertial boost, fuel and a live analog FFB magnitude meter.
 - Per-car GT7 Retro RPM and speed ranges with dense, readable scale labels; speed falls back explicitly when car metadata is unavailable.
+- Independent car-condition mini app with primitive-drawn body damage, tyre temperatures, wear and puncture state.
 - Light and dark dial themes.
 - Persistent visual, RPM and display settings.
 
@@ -34,6 +35,8 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 For a manual install, extract the archive into the Assetto Corsa root. It contains `apps/lua/RetroEngineeringHUD/`.
 
 Use the app settings window to cycle through the three layouts, choose the light or dark theme, set the RPM thresholds, and tune scale and transparency. GT7 Retro preserves a wide aspect ratio inside the existing app window; widen the window for its largest presentation.
+
+**Retro Engineering Car Condition** appears as a separate entry in CSP's in-game app sidebar. It can be moved and resized independently while sharing the HUD theme and opacity settings.
 
 The GT7 Retro FFB gauge reads CSP's `ac.getCar(0).ffbFinal` and moves its inertial needle using the absolute 0–100% magnitude. Its saturation warning briefly holds when the raw value reaches 98% or more. In replays or other contexts where physics telemetry is unavailable the needle parks at zero instead of substituting an estimate.
 
