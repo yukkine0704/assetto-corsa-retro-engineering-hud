@@ -361,9 +361,9 @@ local function drawBoostGauge(origin, scale, state)
     return
   end
 
-  local startAngle = math.rad(205)
-  local endAngle = math.rad(335)
-  local radius = 65 * scale
+  local startAngle = Layout.boostStart
+  local endAngle = Layout.boostEnd
+  local radius = Layout.boostRadius * scale
   drawArc(center, radius, startAngle, endAngle, C.inactive, 12 * scale, 20)
   local pressureNormalized = U.clamp((state.turboBoost or 0)
     / math.max(state.turboDisplayMax or 1, 0.1), 0, 1)
