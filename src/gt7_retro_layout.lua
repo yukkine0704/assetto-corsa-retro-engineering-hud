@@ -64,6 +64,12 @@ return {
   ffbNeedleSpring = 70,
   ffbNeedleDamping = 12.5,
   ffbNeedleMaxVelocity = 2.6,
+  historyLeft = 510,
+  historyRight = 930,
+  historyTop = 332,
+  historyBottom = 470,
+  historyGridRows = 4,
+  historyGridColumns = 6,
 
   pedalTop = 350,
   pedalHeight = 120,

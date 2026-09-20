@@ -21,6 +21,7 @@ local windowWidth, windowHeight = 460, 460
 local pressInstrumentMode = false
 local pressSpeedNeedleMode = false
 local pressRpmNeedleMode = false
+local pressLowerPanelMode = false
 local lastWindowConstraint
 
 ac = {
@@ -85,6 +86,10 @@ ui = {
       pressRpmNeedleMode = false
       return true
     end
+    if pressLowerPanelMode and label:find('Lower panel:', 1, true) == 1 then
+      pressLowerPanelMode = false
+      return true
+    end
     return false
   end
 }
@@ -97,7 +102,7 @@ local DialLayout = require('src/layout')
 local Gt7Layout = require('src/gt7_retro_layout')
 
 assert(Settings.values.instrumentMode == 'analog', 'v5 migration must preserve analog')
-assert(Settings.values.layoutVersion == 6, 'v6 migration must complete')
+assert(Settings.values.layoutVersion == 7, 'v7 migration must complete')
 assert(Settings.values.gt7SpeedNeedleMode == 'digital'
   and Settings.values.gt7RpmNeedleMode == 'digital',
   'v6 migration must preserve the former direct GT7 needle response')
@@ -122,6 +127,14 @@ Settings.draw()
 assert(Settings.values.gt7SpeedNeedleMode == 'analog'
   and Settings.values.gt7RpmNeedleMode == 'analog',
   'GT7 RPM needle selection must be independent')
+pressLowerPanelMode = true
+Settings.draw()
+assert(Settings.values.gt7LowerPanelMode == 'pedal_history',
+  'GT7 lower panel selector must expose pedal history')
+pressLowerPanelMode = true
+Settings.draw()
+assert(Settings.values.gt7LowerPanelMode == 'ffb',
+  'GT7 lower panel selector must restore the FFB gauge')
 
 local function makeCar(overrides)
   local function wheel(overrides)
@@ -268,7 +281,9 @@ local scenarios = {
     turboCount = 1, turboBoost = 1.2, rpm = 7800, ffbFinal = 1.03,
     turningLeftLights = true, handbrake = 1, headlightsActive = true,
     engineLifeLeft = 600, absInAction = true
-  }), unit = 'km/h', scale = 0.72, flag = 2 }
+  }), unit = 'km/h', scale = 0.72, flag = 2 },
+  { mode = 'gt7_retro', width = 1000, height = 420, car = makeCar({ gas = 0.82, brake = 0.36 }),
+    unit = 'km/h', scale = 0.80, lowerPanel = 'pedal_history' }
 }
 
 for _, scenario in ipairs(scenarios) do
@@ -278,6 +293,7 @@ for _, scenario in ipairs(scenarios) do
   Settings.values.theme = scenario.width > 1000 and 'light' or 'dark'
   Settings.values.gt7SpeedNeedleMode = scenario.speedNeedle or Settings.values.gt7SpeedNeedleMode
   Settings.values.gt7RpmNeedleMode = scenario.rpmNeedle or Settings.values.gt7RpmNeedleMode
+  Settings.values.gt7LowerPanelMode = scenario.lowerPanel or Settings.values.gt7LowerPanelMode
   sim.raceFlagType = scenario.flag
   windowWidth, windowHeight, car = scenario.width, scenario.height, scenario.car
   script.update(1 / 60)

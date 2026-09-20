@@ -1,6 +1,7 @@
 local U = require('src/utils')
 local Layout = require('src/layout')
 local Gt7Layout = require('src/gt7_retro_layout')
+local PedalHistory = require('src/pedal_history')
 
 local M = {}
 local SIM = ac.getSim()
@@ -82,6 +83,7 @@ local function blankState()
     ffbPercent = 0,
     ffbClipping = false,
     ffbClipHold = 0,
+    pedalHistory = PedalHistory.new(),
     tcSupported = false,
     tcLevel = nil,
     tcActive = nil,
@@ -406,6 +408,7 @@ function M.update(state, dt, settings)
     state.gt7RpmNeedleVelocity = 0
     state.boostNeedleNormalized = 0
     state.boostNeedleVelocity = 0
+    PedalHistory.clear(state.pedalHistory)
     resetCondition(state)
     return
   end
@@ -467,6 +470,7 @@ function M.update(state, dt, settings)
   local rawClutch = U.number(U.read(car, 'clutch', nil), nil)
   state.clutch = rawClutch and U.clamp(1 - rawClutch, 0, 1) or 0
   state.handbrake = U.clamp(U.number(U.read(car, 'handbrake', 0), 0), 0, 1)
+  PedalHistory.update(state.pedalHistory, dt, state.throttle, state.brake)
   state.engineLifeLeft = U.number(U.read(car, 'engineLifeLeft', nil), nil)
   state.engineWarning = state.engineLifeLeft ~= nil and state.engineLifeLeft < 850
   updateCondition(state, car)

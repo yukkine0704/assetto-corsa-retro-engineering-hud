@@ -13,6 +13,7 @@ M.values = ac.storage({
   analogAuxiliaryMode = 'auto',
   gt7SpeedNeedleMode = 'digital',
   gt7RpmNeedleMode = 'digital',
+  gt7LowerPanelMode = 'ffb',
   rpmWarningFraction = 0.86,
   rpmRedlineFraction = 0.96,
   fallbackRpm = 8000,
@@ -73,6 +74,13 @@ end
 M.values.gt7SpeedNeedleMode = validNeedleMode(M.values.gt7SpeedNeedleMode)
 M.values.gt7RpmNeedleMode = validNeedleMode(M.values.gt7RpmNeedleMode)
 if (M.values.layoutVersion or 1) < 6 then M.values.layoutVersion = 6 end
+
+local function validGt7LowerPanelMode(value)
+  return value == 'pedal_history' and 'pedal_history' or 'ffb'
+end
+
+M.values.gt7LowerPanelMode = validGt7LowerPanelMode(M.values.gt7LowerPanelMode)
+if (M.values.layoutVersion or 1) < 7 then M.values.layoutVersion = 7 end
 
 local function normalizeRpmThresholds()
   local redline = math.max(0.82, math.min(M.values.rpmRedlineFraction or 0.96, 1.0))
@@ -140,6 +148,14 @@ local function needleModeLabel(key)
   return M.values[key] == 'analog' and 'Analog' or 'Digital'
 end
 
+local function nextGt7LowerPanelMode()
+  M.values.gt7LowerPanelMode = M.values.gt7LowerPanelMode == 'ffb' and 'pedal_history' or 'ffb'
+end
+
+local function gt7LowerPanelModeLabel()
+  return M.values.gt7LowerPanelMode == 'pedal_history' and 'Pedal history' or 'FFB gauge'
+end
+
 local instrumentModes = {
   { value = 'digital', label = 'Digital dial' },
   { value = 'analog', label = 'Analog dial' },
@@ -205,6 +221,10 @@ function M.draw()
       nextNeedleMode('gt7RpmNeedleMode')
       M.lastChange = 'GT7 RPM needle'
     end
+    if ui.button('Lower panel: ' .. gt7LowerPanelModeLabel()) then
+      nextGt7LowerPanelMode()
+      M.lastChange = 'GT7 lower panel'
+    end
   end
 
   ui.separator()
@@ -229,7 +249,7 @@ function M.draw()
   ui.separator()
   ui.text('Last change: ' .. M.lastChange)
   if M.values.instrumentMode == 'gt7_retro' then
-    ui.textWrapped('Resize GT7 Retro by dragging the app window borders or corners. Its panoramic aspect ratio is preserved; HUD scale is a secondary fine adjustment.')
+    ui.textWrapped('Resize GT7 Retro by dragging the app window borders or corners. Its panoramic aspect ratio is preserved; HUD scale is a secondary fine adjustment. The lower panel can show the live FFB gauge or a compact brake/throttle history graph.')
   else
     ui.textWrapped('The dial is transparent outside its circular surface. Adjust its compact scale and frosted backdrop here; resize or move it through the normal AC app controls.')
   end

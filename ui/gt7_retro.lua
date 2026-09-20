@@ -1,5 +1,6 @@
 local Theme = require('src/theme')
 local Layout = require('src/gt7_retro_layout')
+local PedalHistory = require('src/pedal_history')
 local U = require('src/utils')
 
 local M = {}
@@ -440,6 +441,68 @@ local function drawFfb(origin, scale, state)
   ui.drawCircleFilled(pivot, 3.5 * scale, needleColor, 16)
 end
 
+local function drawPedalTrace(origin, scale, history, key, color, width, top, bottom)
+  if not history or history.count == 0 then return end
+  local left = Layout.historyLeft + 12
+  local right = Layout.historyRight - 12
+  local plotWidth = right - left
+  local plotHeight = bottom - top
+  local firstOffset = PedalHistory.CAPACITY - history.count
+  ui.pathClear()
+  for ordinal = 0, history.count - 1 do
+    local sample = PedalHistory.sampleAt(history, ordinal)
+    local value = U.clamp(sample and sample[key] or 0, 0, 1)
+    local x = left + (firstOffset + ordinal) / (PedalHistory.CAPACITY - 1) * plotWidth
+    local y = bottom - value * plotHeight
+    ui.pathLineTo(point(origin, scale, x, y))
+  end
+  ui.pathStroke(color, false, width * scale)
+end
+
+local function drawPedalHistory(origin, scale, state, backdropOpacity)
+  local left = Layout.historyLeft
+  local right = Layout.historyRight
+  local top = Layout.historyTop
+  local bottom = Layout.historyBottom
+  local fill = withAlpha(C.panel, math.min(0.90, math.max(0.52, backdropOpacity + 0.08)))
+  local topLeft = point(origin, scale, left, top)
+  local bottomRight = point(origin, scale, right, bottom)
+  ui.drawRectFilled(topLeft, bottomRight, fill, 8 * scale)
+  ui.drawRect(topLeft, bottomRight, C.outlineSoft, 8 * scale, nil, 1.1 * scale)
+
+  centeredText('PEDALS', 11 * scale, point(origin, scale, left + 45, top + 13), C.secondary)
+  drawLine(point(origin, scale, right - 102, top + 13),
+    point(origin, scale, right - 88, top + 13), C.red, 2 * scale)
+  centeredText('BRK', 9 * scale, point(origin, scale, right - 72, top + 13), C.red)
+  drawLine(point(origin, scale, right - 50, top + 13),
+    point(origin, scale, right - 36, top + 13), C.cyan, 2 * scale)
+  centeredText('THR', 9 * scale, point(origin, scale, right - 20, top + 13), C.cyan)
+
+  local plotTop = top + 25
+  local plotBottom = bottom - 10
+  local plotLeft = left + 12
+  local plotRight = right - 12
+  for row = 0, Layout.historyGridRows do
+    local y = plotTop + (plotBottom - plotTop) * row / Layout.historyGridRows
+    drawLine(point(origin, scale, plotLeft, y), point(origin, scale, plotRight, y),
+      withAlpha(C.outlineDim, 0.62), 0.7 * scale)
+  end
+  for column = 0, Layout.historyGridColumns do
+    local x = plotLeft + (plotRight - plotLeft) * column / Layout.historyGridColumns
+    drawLine(point(origin, scale, x, plotTop), point(origin, scale, x, plotBottom),
+      withAlpha(C.outlineDim, 0.48), 0.7 * scale)
+  end
+  drawLine(point(origin, scale, plotLeft, plotBottom), point(origin, scale, plotRight, plotBottom),
+    withAlpha(C.amber, 0.72), 1 * scale)
+
+  drawPedalTrace(origin, scale, state.pedalHistory, 'brake', C.red, 2.2, plotTop, plotBottom)
+  drawPedalTrace(origin, scale, state.pedalHistory, 'throttle', C.cyan, 2.2, plotTop, plotBottom)
+  if not state.pedalHistory or state.pedalHistory.count == 0 then
+    centeredText('NO PEDAL DATA', 10 * scale,
+      point(origin, scale, (left + right) / 2, (plotTop + plotBottom) / 2), C.outlineSoft)
+  end
+end
+
 local function drawPedalBar(origin, scale, x, value, activeColor)
   local segmentCount = Layout.pedalSegments
   local gap = Layout.pedalGap * scale
@@ -572,7 +635,11 @@ function M.draw(state, settings)
   drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   drawRpmDial(origin, scale, state, settings, backdropOpacity)
   drawPedalsAndFlagLights(origin, scale, state, settings)
-  drawFfb(origin, scale, state)
+  if settings.gt7LowerPanelMode == 'pedal_history' then
+    drawPedalHistory(origin, scale, state, backdropOpacity)
+  else
+    drawFfb(origin, scale, state)
+  end
   drawStatusStrips(origin, scale, state, settings, backdropOpacity)
   if settings.debug then drawDebug(origin, scale, state, width, height) end
 

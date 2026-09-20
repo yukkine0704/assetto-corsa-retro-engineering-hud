@@ -15,6 +15,7 @@ A compact retro motorsport HUD for Assetto Corsa, built as a native Custom Shade
 - Brake/throttle bars, TC, ABS, lights, pit status and clutch display.
 - Optional turbo or fuel lower gauge in analog mode.
 - Primitive-drawn panoramic cluster with independently selectable digital bars or inertial speed/RPM needles, inertial boost, fuel and a live analog FFB magnitude meter.
+- Optional GT7 Retro lower panel with a compact brake/throttle usage history graph in place of the FFB gauge.
 - Per-car GT7 Retro RPM and speed ranges with dense, readable scale labels; speed falls back explicitly when car metadata is unavailable.
 - Independent car-condition mini app with primitive-drawn body damage, tyre temperatures, wear and puncture state.
 - Light and dark dial themes.
