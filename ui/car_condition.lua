@@ -112,11 +112,8 @@ local function drawTyre(origin, scale, x, y, name, wheel, state)
 
   local temperature = wheel and wheel.temperature
   local temperatureText = temperature and string.format('%d°', U.round(temperature)) or '--°'
-  local lifeText = wheel and wheel.wearAvailable
-    and string.format('%d%%', U.round(U.clamp(wheel.remaining, 0, 1) * 100)) or '--%'
   centeredText(name .. ' ' .. temperatureText, 11 * scale,
     point(origin, scale, x, y - halfHeight - 12), C.primary)
-  centeredText(lifeText, 10 * scale, point(origin, scale, x, y + halfHeight + 12), stateColor)
 end
 
 local function drawBody(origin, scale, condition)
@@ -184,9 +181,6 @@ function M.draw(state, settings)
 
   ui.pushStyleVarAlpha(settings.opacity or 1)
   ui.pushDWriteFont(Theme.fonts.utility)
-  ui.drawRectFilled(origin + vec2(3 * scale, 3 * scale),
-    origin + vec2((Layout.width - 3) * scale, (Layout.height - 3) * scale),
-    withAlpha(C.panel, settings.backgroundOpacity or 0.72), 10 * scale)
 
   if not condition or not condition.available then
     centeredText('NO CAR DATA', 14 * scale, point(origin, scale, 120, 130), C.secondary)
