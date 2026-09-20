@@ -161,13 +161,15 @@ end
 
 local function drawCenterBackdrop(origin, scale, backdropOpacity)
   local chamfer = Layout.centerBackdropChamfer
+  local bottomLeft = Layout.centerLeft + Layout.centerBackdropBottomInset
+  local bottomRight = Layout.centerRight - Layout.centerBackdropBottomInset
   drawPolygon(origin, scale, {
     { Layout.centerLeft + chamfer, Layout.centerTop },
     { Layout.centerRight - chamfer, Layout.centerTop },
     { Layout.centerRight, Layout.centerTop + chamfer },
     { Layout.centerRight, Layout.centerBottom - chamfer },
-    { Layout.centerRight - chamfer, Layout.centerBottom },
-    { Layout.centerLeft + chamfer, Layout.centerBottom },
+    { bottomRight - chamfer, Layout.centerBottom },
+    { bottomLeft + chamfer, Layout.centerBottom },
     { Layout.centerLeft, Layout.centerBottom - chamfer },
     { Layout.centerLeft, Layout.centerTop + chamfer }
   }, withAlpha(C.panel, math.min(0.92, math.max(0.58, backdropOpacity + 0.12))),
@@ -213,8 +215,10 @@ local function drawCenterReadout(origin, scale, state, settings, backdropOpacity
   local blink = indicatorLit(state, settings)
   local leftActive = (state.hazardLights or state.leftIndicator) and blink
   local rightActive = (state.hazardLights or state.rightIndicator) and blink
-  drawTriangle(origin, scale, 460, 145, 'left', leftActive and C.amber or C.outlineDim)
-  drawTriangle(origin, scale, 980, 145, 'right', rightActive and C.amber or C.outlineDim)
+  drawTriangle(origin, scale, Layout.indicatorLeftX, Layout.indicatorY, 'left',
+    leftActive and C.amber or C.outlineDim)
+  drawTriangle(origin, scale, Layout.indicatorRightX, Layout.indicatorY, 'right',
+    rightActive and C.amber or C.outlineDim)
 
   if settings.showSteering ~= false then
     local steering = U.clamp(state.steeringInput or 0, -1, 1)
