@@ -455,8 +455,14 @@ end
 
 local function drawStatusPod(origin, scale, x, label, available, active, color, icon, backdropOpacity)
   local center = point(origin, scale, x, 443)
-  local fill = withAlpha(C.panelRaised, math.max(0.82, math.min(0.98, backdropOpacity + 0.18)))
+  local panelFill = withAlpha(C.panelRaised, math.max(0.82, math.min(0.98, backdropOpacity + 0.18)))
+  local fill = active and withAlpha(color, 0.26) or panelFill
+  local stroke = active and color or (available and C.outlineSoft or C.outlineDim)
   ui.drawCircleFilled(center, 23 * scale, fill, 28)
+  ui.drawCircle(center, 23 * scale, stroke, 28, (active and 2.2 or 1.2) * scale)
+  if active then
+    ui.drawCircleFilled(center, 17 * scale, withAlpha(color, 0.12), 28)
+  end
   local iconColor = not available and C.outlineDim or (active and color or C.secondary)
   if icon then icon(center, scale, iconColor) else centeredText(label, 11 * scale, center, iconColor) end
 end
