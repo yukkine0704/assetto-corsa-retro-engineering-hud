@@ -159,15 +159,56 @@ local function drawTriangle(origin, scale, x, y, direction, color)
   }, color, color, 1)
 end
 
-local function drawCenterReadout(origin, scale, state, settings)
+local function drawCenterBackdrop(origin, scale, backdropOpacity)
+  local chamfer = Layout.centerBackdropChamfer
+  drawPolygon(origin, scale, {
+    { Layout.centerLeft + chamfer, Layout.centerTop },
+    { Layout.centerRight - chamfer, Layout.centerTop },
+    { Layout.centerRight, Layout.centerTop + chamfer },
+    { Layout.centerRight, Layout.centerBottom - chamfer },
+    { Layout.centerRight - chamfer, Layout.centerBottom },
+    { Layout.centerLeft + chamfer, Layout.centerBottom },
+    { Layout.centerLeft, Layout.centerBottom - chamfer },
+    { Layout.centerLeft, Layout.centerTop + chamfer }
+  }, withAlpha(C.panel, math.min(0.92, math.max(0.58, backdropOpacity + 0.12))),
+    C.outlineDim, 1.2)
+end
+
+local function drawGearPod(origin, scale, state, settings, backdropOpacity)
+  local left = Layout.gearPodCenterX - Layout.gearPodHalfWidth
+  local right = Layout.gearPodCenterX + Layout.gearPodHalfWidth
+  local top = Layout.gearPodTop
+  local bottom = Layout.gearPodBottom
+  local chamfer = Layout.gearPodChamfer
+  local warning = state.rpmWarning == true
+  local redline = state.rpmRedline == true
+  local alert = warning or redline
+  local pulse = alert and alertPulse(state, settings, redline)
+  local accent = redline and C.red or C.amber
+  local fill = alert
+    and withAlpha(accent, pulse and 0.28 or 0.10)
+    or withAlpha(C.panelRaised, math.min(0.86, math.max(0.54, backdropOpacity + 0.02)))
+  local stroke = alert and (pulse and accent or withAlpha(accent, 0.55)) or C.outlineSoft
+
+  drawPolygon(origin, scale, {
+    { left + chamfer, top }, { right - chamfer, top },
+    { right, top + chamfer }, { right, bottom - chamfer },
+    { right - chamfer, bottom }, { left + chamfer, bottom },
+    { left, bottom - chamfer }, { left, top + chamfer }
+  }, fill, stroke, alert and 2.4 or 1.4)
+end
+
+local function drawCenterReadout(origin, scale, state, settings, backdropOpacity)
   local redlineOn = state.rpmRedline and alertPulse(state, settings, true)
   local valueColor = state.rpmRedline and (redlineOn and C.red or C.amber)
     or (state.rpmWarning and C.amber or C.primary)
 
+  drawGearPod(origin, scale, state, settings, backdropOpacity)
   centeredText(state.speedText, 76 * scale, point(origin, scale, 620, 172), C.primary)
   centeredText(state.speedUnit, 19 * scale, point(origin, scale, 620, 224), C.secondary)
-  centeredText(state.gearText, 100 * scale, point(origin, scale, 880, 174), valueColor)
-  centeredText('GEAR', 14 * scale, point(origin, scale, 880, 232), C.secondary)
+  centeredText(state.gearText, 100 * scale, point(origin, scale, Layout.gearPodCenterX, 174), valueColor)
+  centeredText('GEAR', 14 * scale, point(origin, scale, Layout.gearPodCenterX, 232),
+    state.rpmRedline and C.red or (state.rpmWarning and C.amber or C.secondary))
 
   local blink = indicatorLit(state, settings)
   local leftActive = (state.hazardLights or state.leftIndicator) and blink
@@ -522,8 +563,9 @@ function M.draw(state, settings)
   ui.pushStyleVarAlpha(settings.opacity or 1)
   ui.pushDWriteFont(Theme.fonts.utility)
 
+  drawCenterBackdrop(origin, scale, backdropOpacity)
   drawRpmBar(origin, scale, state, settings)
-  drawCenterReadout(origin, scale, state, settings)
+  drawCenterReadout(origin, scale, state, settings, backdropOpacity)
   drawSpeedDial(origin, scale, state, settings, backdropOpacity)
   drawRpmDial(origin, scale, state, settings, backdropOpacity)
   drawPedalsAndFlagLights(origin, scale, state, settings)

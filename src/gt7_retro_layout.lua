@@ -24,6 +24,12 @@ return {
   centerRight = 1020,
   centerTop = 91,
   centerBottom = 285,
+  centerBackdropChamfer = 24,
+  gearPodCenterX = 880,
+  gearPodTop = 112,
+  gearPodBottom = 244,
+  gearPodHalfWidth = 92,
+  gearPodChamfer = 14,
 
   rpmLeft = 448,
   rpmRight = 992,
