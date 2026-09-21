@@ -310,7 +310,7 @@ local function drawDialTicks(center, scale, labelValues, formatter, activeFracti
   for _, value in ipairs(labelValues) do
     local fraction = U.clamp(value / scaleMaximum, 0, 1)
     local labelPosition = U.polar(center, (Layout.tickRadius - 35) * scale, gaugeAngle(fraction))
-    local labelSize = #labelValues > 9 and 14 or (#labelValues > 5 and 16 or 18)
+    local labelSize = #labelValues > 9 and 16 or (#labelValues > 5 and 18 or 20)
     centeredText(formatter(value), labelSize * scale, labelPosition, C.primary)
   end
 

@@ -18,6 +18,11 @@ return {
   tyreOptimumLowRatio = 0.86,
   tyreOptimumHighRatio = 1.08,
   tyreHotRatio = 1.24,
+  -- Absolute fallbacks keep CSP setups with unusually high optimum values
+  -- from classifying normal 80+ °C running as cold, and make the hot warning
+  -- predictable across cars.
+  tyreWarmTemperature = 78,
+  tyreHotTemperature = 95,
 
   conditionWarn = 0.35,
   conditionDanger = 0.72,

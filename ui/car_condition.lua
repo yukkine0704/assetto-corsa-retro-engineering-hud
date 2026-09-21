@@ -60,7 +60,14 @@ end
 
 local function temperatureColor(wheel)
   if not wheel or not wheel.temperatureRatio then return C.metalDim end
+  local temperature = wheel.temperature
+  if temperature and temperature >= Layout.tyreHotTemperature then
+    return C.red
+  end
   local ratio = wheel.temperatureRatio
+  if temperature and temperature >= Layout.tyreWarmTemperature then
+    ratio = math.max(ratio, Layout.tyreOptimumLowRatio)
+  end
   if ratio <= Layout.tyreColdRatio then return C.cyan end
   if ratio < Layout.tyreOptimumLowRatio then
     return mix(C.cyan, C.green,
@@ -110,9 +117,9 @@ local function drawTyre(origin, scale, x, y, name, wheel, state)
     drawLine(point(origin, scale, x + 7, y - 13), point(origin, scale, x - 7, y + 13), C.primary, 2 * scale)
   end
 
-  local temperature = wheel and wheel.temperature
-  local temperatureText = temperature and string.format('%d°', U.round(temperature)) or '--°'
-  centeredText(name .. ' ' .. temperatureText, 11 * scale,
+  -- Temperature is communicated by the tyre fill color; keep the compact
+  -- condition app free of a numeric temperature readout.
+  centeredText(name, 11 * scale,
     point(origin, scale, x, y - halfHeight - 12), C.primary)
 end
 
