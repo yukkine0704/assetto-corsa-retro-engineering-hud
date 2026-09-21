@@ -582,23 +582,31 @@ end
 local function drawStatusStrips(origin, scale, state, settings, backdropOpacity)
   local fuelLow = state.fuel ~= nil and (state.fuelNormalized or 0) < 0.15
   local fuelActive = fuelLow and warningBlink(state, settings)
-  drawStatusPod(origin, scale, 88, 'FUEL', state.fuel ~= nil, fuelActive, C.red, nil, backdropOpacity)
-  drawStatusPod(origin, scale, 146, 'TC', state.tcSupported, state.tcActive == true,
+  drawStatusPod(origin, scale, Layout.leftCenterX + Layout.leftFuelStatusOffset,
+    'FUEL', state.fuel ~= nil, fuelActive, C.red, nil, backdropOpacity)
+  drawStatusPod(origin, scale, Layout.leftCenterX + Layout.leftTcStatusOffset,
+    'TC', state.tcSupported, state.tcActive == true,
     C.amber, nil, backdropOpacity)
-  drawStatusPod(origin, scale, 304, 'PIT', true, state.pitLane or state.pitLimiter == true,
+  drawStatusPod(origin, scale, Layout.leftCenterX + Layout.leftPitStatusOffset,
+    'PIT', true, state.pitLane or state.pitLimiter == true,
     C.amber, nil, backdropOpacity)
-  drawStatusPod(origin, scale, 362, 'LIM', state.pitLimiter ~= nil,
+  drawStatusPod(origin, scale, Layout.leftCenterX + Layout.leftLimiterStatusOffset,
+    'LIM', state.pitLimiter ~= nil,
     state.pitLimiter == true, C.amber, nil, backdropOpacity)
 
-  drawStatusPod(origin, scale, 1078, 'ABS', state.absSupported,
+  drawStatusPod(origin, scale, Layout.rightCenterX + Layout.rightAbsStatusOffset,
+    'ABS', state.absSupported,
     state.absActive == true or state.absLevel == 0, state.absLevel == 0 and C.red or C.amber,
     nil, backdropOpacity)
   local lightsAvailable = settings.showLights and state.lightsAvailable
-  drawStatusPod(origin, scale, 1136, 'L', lightsAvailable, lightsAvailable and state.headlights == true,
+  drawStatusPod(origin, scale, Layout.rightCenterX + Layout.rightLightsStatusOffset,
+    'L', lightsAvailable, lightsAvailable and state.headlights == true,
     state.highBeams and C.amber or C.cyan, lightsAvailable and drawLightIcon or nil, backdropOpacity)
-  drawStatusPod(origin, scale, 1294, 'P', true, state.handbrake > 0.05,
+  drawStatusPod(origin, scale, Layout.rightCenterX + Layout.rightBrakeStatusOffset,
+    'P', true, state.handbrake > 0.05,
     C.red, drawBrakeIcon, backdropOpacity)
-  drawStatusPod(origin, scale, 1352, 'ENG', state.engineLifeLeft ~= nil, state.engineWarning,
+  drawStatusPod(origin, scale, Layout.rightCenterX + Layout.rightEngineStatusOffset,
+    'ENG', state.engineLifeLeft ~= nil, state.engineWarning,
     C.red, drawEngineIcon, backdropOpacity)
 end
 
