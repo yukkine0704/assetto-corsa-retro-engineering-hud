@@ -23,6 +23,7 @@ local pressSpeedNeedleMode = false
 local pressRpmNeedleMode = false
 local pressLowerPanelMode = false
 local lastWindowConstraint
+local lastRequestedWindowSize
 
 ac = {
   FolderID = { ContentCars = 1 },
@@ -67,6 +68,9 @@ ui = {
   popStyleVar = noop,
   pushDWriteFont = noop,
   pushStyleVarAlpha = noop,
+  setNextWindowSize = function(size)
+    lastRequestedWindowSize = size
+  end,
   header = noop,
   separator = noop,
   text = noop,
@@ -301,8 +305,11 @@ for _, scenario in ipairs(scenarios) do
 end
 
 assert(lastWindowConstraint and lastWindowConstraint.id == 'main'
-  and lastWindowConstraint.minimum.x == 320 and lastWindowConstraint.minimum.y == 112,
+  and lastWindowConstraint.minimum.x == 575 and lastWindowConstraint.minimum.y == 240,
   'GT7 Retro must expose panoramic mouse-resize constraints')
+assert(lastRequestedWindowSize and lastRequestedWindowSize.x >= 575
+  and lastRequestedWindowSize.y <= 360,
+  'GT7 Retro must widen an existing square window once when entering panoramic mode')
 
 Settings.values.instrumentMode = 'digital'
 script.windowMain()

@@ -9,6 +9,7 @@ local THEME_EVENT = 'retro-engineering-hud/theme/v1'
 local themeBroadcastTimer = 1
 local lastThemePayload
 local lastWindowConstraintMode
+local panoramicSizeChecked = false
 
 local function clampUnit(value, fallback)
   value = tonumber(value)
@@ -39,10 +40,11 @@ local function updateWindowConstraints(mode)
   local constraintMode = mode == 'gt7_retro' and 'panoramic' or 'square'
   if constraintMode == lastWindowConstraintMode then return end
   lastWindowConstraintMode = constraintMode
+  if constraintMode ~= 'panoramic' then panoramicSizeChecked = false end
 
   if ac.setWindowSizeConstraints then
     if constraintMode == 'panoramic' then
-      ac.setWindowSizeConstraints('main', vec2(320, 112), vec2(4096, 1440))
+      ac.setWindowSizeConstraints('main', vec2(575, 240), vec2(4096, 1440))
     else
       ac.setWindowSizeConstraints('main', vec2(340, 340), vec2(2048, 2048))
     end
@@ -53,6 +55,14 @@ function script.windowMain(_)
   local mode = Settings.values.instrumentMode
   updateWindowConstraints(mode)
   if mode == 'gt7_retro' then
+    if not panoramicSizeChecked then
+      panoramicSizeChecked = true
+      local width = ui.windowWidth()
+      local height = ui.windowHeight()
+      if height > 0 and width < height * 1.25 and ui.setNextWindowSize then
+        ui.setNextWindowSize(vec2(math.max(width * 1.25, 720), math.min(height, 360)))
+      end
+    end
     Gt7Retro.draw(state, Settings.values)
   else
     Dial.draw(state, Settings.values)

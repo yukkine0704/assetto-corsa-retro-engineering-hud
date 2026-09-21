@@ -39,7 +39,7 @@ Use the app settings window to cycle through the three layouts, choose the light
 
 **Retro Engineering Car Condition** appears as a separate entry in CSP's in-game app sidebar. It can be moved and resized independently while sharing the HUD theme and opacity settings.
 
-The GT7 Retro FFB gauge reads CSP's `ac.getCar(0).ffbFinal` and moves its inertial needle using the absolute 0–100% magnitude. Its saturation warning briefly holds when the raw value reaches 98% or more. In replays or other contexts where physics telemetry is unavailable the needle parks at zero instead of substituting an estimate.
+The GT7 Retro FFB gauge reads CSP's `ac.getCar(0).ffbFinal` and moves its inertial needle using the absolute 0–100% magnitude. Its saturation warning briefly holds when the raw value reaches 98% or more. In replays or other contexts where physics telemetry is unavailable the needle parks at zero instead of substituting an estimate. The panoramic window starts rectangular and widens an older square layout once when GT7 Retro is selected.
 
 ## License
 
