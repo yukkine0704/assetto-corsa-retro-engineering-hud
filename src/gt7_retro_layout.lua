@@ -7,8 +7,8 @@ return {
   width = 1440,
   height = 500,
 
-  leftCenterX = 220,
-  rightCenterX = 1220,
+  leftCenterX = 190,
+  rightCenterX = 1250,
   dialCenterY = 258,
   dialRadius = 174,
   tickRadius = 155,
@@ -71,9 +71,9 @@ return {
   historyGridRows = 4,
   historyGridColumns = 6,
 
-  pedalTop = 350,
-  pedalHeight = 120,
-  pedalWidth = 16,
+  pedalTop = 300,
+  pedalHeight = 170,
+  pedalWidth = 22,
   pedalSegments = 12,
   pedalGap = 3,
   brakeX = 402,
